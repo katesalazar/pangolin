@@ -1,0 +1,6 @@
+#   Ignore JetBrains stuff.
+.idea/
+*.iml
+
+#   Ignore Java and Maven stuff.
+target/
