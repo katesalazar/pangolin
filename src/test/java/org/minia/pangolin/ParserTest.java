@@ -6,6 +6,8 @@ import junit.framework.TestSuite;
 import lombok.val;
 import lombok.var;
 
+import java.util.ArrayList;
+
 /**
  * Unit test.
  */
@@ -53,6 +55,21 @@ public class ParserTest extends TestCase
         try {
             val parseTree = parser.parse();
         } catch (IllegalStateException ignore) {
+            excepted = true;
+        }
+        assertTrue(excepted);
+    }
+
+    public void test3() {
+        val aDocument = new Document("garbage");
+        val anotherDocument = new Document("more garbage");
+        val documents = new ArrayList<Document>(2);
+        val program = new Program(documents);
+        val parser = new Parser(program);
+        var excepted = false;
+        try {
+            val parseTree = parser.parse();
+        } catch (AssertionError ignore) {
             excepted = true;
         }
         assertTrue(excepted);
