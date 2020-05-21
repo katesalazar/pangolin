@@ -8,14 +8,14 @@ import lombok.val;
 /**
  * Unit test.
  */
-public class ParseTreeTest extends TestCase
+public class NamedFunctionTest extends TestCase
 {
     /**
      * Create the test case
      *
      * @param testName name of the test case
      */
-    public ParseTreeTest(final String testName) {
+    public NamedFunctionTest(final String testName) {
         super(testName);
     }
 
@@ -23,12 +23,11 @@ public class ParseTreeTest extends TestCase
      * @return the suite of tests being tested
      */
     public static Test suite() {
-        return new TestSuite(ParseTreeTest.class);
+        return new TestSuite(NamedFunctionTest.class);
     }
 
     public void test0() {
-        val parseTree = new ParseTree(null);
-        assertTrue(parseTree.getNamedFunctions().isEmpty());
-        val raw = parseTree.getRaw();
+        val namedFunction = new NamedFunction();
+        assertNull(namedFunction.getOperations());
     }
 }

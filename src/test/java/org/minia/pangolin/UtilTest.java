@@ -3,12 +3,13 @@ package org.minia.pangolin;
 import junit.framework.Test;
 import junit.framework.TestCase;
 import junit.framework.TestSuite;
+import lombok.val;
 import lombok.var;
 
 import static org.minia.pangolin.Util.forceAssert;
 
 /**
- * Unit test for simple App.
+ * Unit test.
  */
 public class UtilTest extends TestCase
 {
@@ -17,22 +18,22 @@ public class UtilTest extends TestCase
      *
      * @param testName name of the test case
      */
-    public UtilTest( String testName )
-    {
-        super( testName );
+    public UtilTest(final String testName) {
+        super(testName);
     }
 
     /**
      * @return the suite of tests being tested
      */
     public static Test suite() {
-        return new TestSuite( ParseTreeTest.class );
+        return new TestSuite(UtilTest.class);
     }
 
-    /**
-     * Rigourous Test :-)
-     */
     public void test0() {
+        val util = new Util();
+    }
+
+    public void test1() {
         var excepted = false;
         try {
             forceAssert(false);
