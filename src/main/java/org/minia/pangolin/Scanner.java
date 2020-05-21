@@ -40,8 +40,8 @@ public class Scanner {
 
     public Token nextToken() {
         forcedAssertion(moreTokens());
+        //   `documents.size() == 1`, as asserted inside `moreTokens()`.
         val documents = program.getDocuments();
-        forcedAssertion(documents.size() == 1);
         val document = documents.get(0);
         val documentRaw = document.getRaw();
         val documentRawAsString = documentRaw.toString();
@@ -67,17 +67,17 @@ public class Scanner {
                     currentIdentifier.append(remainingStuff.charAt(0));
                     index += 1;
                 }
-            } else if (remainingStuff.startsWith("comment ")) {
-                index += "comment ".length();
+            } else if (remainingStuff.startsWith("comment")) {
+                index += "comment".length();
                 expectingCommentEnd = true;
-            } else if (remainingStuff.startsWith("end ")) {
-                index += "end ".length();
+            } else if (remainingStuff.startsWith("end")) {
+                index += "end".length();
                 returning = Token.newEndToken();
-            } else if (remainingStuff.startsWith("function ")) {
-                index += "function ".length();
+            } else if (remainingStuff.startsWith("function")) {
+                index += "function".length();
                 returning = Token.newFunctionToken();
-            } else if (remainingStuff.startsWith("identifier ")) {
-                index += "identifier ".length();
+            } else if (remainingStuff.startsWith("identifier")) {
+                index += "identifier".length();
                 expectingIdentifierEnd = true;
             } else if (remainingStuff.startsWith(" ")) {
                 index += 1;

@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static org.minia.pangolin.Util.forceAssert;
+import static org.minia.pangolin.Util.forcedAssertion;
 
 public class Parser {
 
@@ -85,10 +86,8 @@ public class Parser {
     }
 
     public Pair<ParseTree, List<Token>> reduce(final List<Token> tokens) {
-        if (canReduceFunction(tokens)) {
-            return reduceFunction(tokens);
-        }
-        throw new IllegalStateException("FIXME");
+        forcedAssertion(canReduceFunction(tokens));
+        return reduceFunction(tokens);
     }
 
     public Pair<ParseTree, List<Token>> reduceFunction(final List<Token> tokens) {
