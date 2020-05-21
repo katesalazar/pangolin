@@ -2,12 +2,15 @@ package org.minia.pangolin;
 
 import lombok.extern.java.Log;
 import lombok.val;
+import org.minia.pangolin.parser.ParseTree;
+import org.minia.pangolin.parser.Parser;
 
 import java.io.BufferedReader;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
-import java.util.logging.Level;
+
+import static org.minia.pangolin.util.Util.forcedAssertion;
 
 @Log
 public class App {
@@ -20,15 +23,13 @@ public class App {
             "| .__/ \\__,_|_| |_|\\__, |\\___/|_|_|_| |_|\n" +
             "|_|                |___/                 ";
 
-    private static boolean noBanner(final String[] args) {
+    private static boolean canPrintBanner(final String[] args) {
         for (val arg: args) {
             if ("--no-banner".equals(arg)) {
-                System.out.println("I am here");
-                return true;
+                return false;
             }
         }
-        System.out.println("I am here");
-        return false;
+        return true;
     }
 
     private static boolean runApp(final String app) {
@@ -37,33 +38,47 @@ public class App {
         try {
             fileReader = new FileReader(pathToMain);
         } catch (FileNotFoundException fnfe) {
-            log.log(Level.ALL, fnfe.toString());
-            System.err.println(fnfe);
-            System.out.println("I am here");
+            log.severe(fnfe.toString());
             return false;
         }
-        val bufferedReader = new BufferedReader(fileReader);
+
         String line;
         val lines = new StringBuilder(16);
-        try {
+        try (val bufferedReader = new BufferedReader(fileReader)) {
             while (null != (line = bufferedReader.readLine())) {
-                lines.append(line);
+                lines.append(line).append('\n');
             }
         } catch (IOException ioe) {
-            System.err.println(ioe);
-            System.out.println("I am here");
+            log.severe(ioe.toString());
             return false;
-        } finally {
-            try {
-                bufferedReader.close();
-            } catch (IOException ignore) {}
         }
         val document = new Document(lines);
         val program = new Program(document);
         val parser = new Parser(program);
-        ParseTree parseTree = parser.parse();
-        System.out.println("I am here");
-        return false;  /* FIXME */
+        val parsedTrees = parser.parse();
+        /*
+        if (parseTree.getType() == ParseTree.Type.EMPTY) {
+            return true;
+        } else if (parseTree.getType() == ParseTree.Type.NAMED_FUNCTION) {
+            return false;
+        } else if (parseTree.getType() == ParseTree.Type.DOC) {
+            return true;
+        } else {
+            forcedAssertion(parseTree.getType() == ParseTree.Type.DOC_FRAGMENT);
+            return false;
+        }
+        */
+        return true;
+    }
+
+    /**  <p>`@SuppressWarnings("java:S106")` will suppress the warning
+     * by which a standard output print is adviced to be turned to a
+     * logging call. Here the standard output print is on purpose.
+     *   @return A boolean `true` value, for this should not fail. */
+    @SuppressWarnings("java:S106")
+    private static boolean greet() {
+        System.out.println("Wish you have a wonderful day!");
+        return true;
     }
 
     private static boolean process(final String[] args) {
@@ -73,16 +88,27 @@ public class App {
                     "app".equals(args[i + 1])) {
                 return runApp(args[i + 2]);
             }
+            if ("greet".equals(args[i])) {
+                return greet();
+            }
         }
         return false;
     }
 
-    public static void main(final String[] args) {
-        if (noBanner(args)) {
+    public static int fakeableMain(final String[] args) {
+        if (canPrintBanner(args)) {
             log.info(FIGLET);
         }
-        if (!process(args)) {
-            //System.exit(1); FIXME would break sonarcloud deployment I think
+        if (process(args)) {
+            return 0;
+        }
+        return 1;
+    }
+
+    public static void main(final String[] args) {
+        val exitStatus = fakeableMain(args);
+        if (exitStatus == 1) {
+            System.exit(exitStatus);
         }
     }
 }

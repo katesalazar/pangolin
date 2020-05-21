@@ -1,9 +1,10 @@
-package org.minia.pangolin;
+package org.minia.pangolin.parser;
 
 import junit.framework.Test;
 import junit.framework.TestCase;
 import junit.framework.TestSuite;
 import lombok.val;
+import org.minia.pangolin.Program;
 
 /**
  * Unit test.
@@ -27,7 +28,7 @@ public class ParseTreeTest extends TestCase
     }
 
     public void test0() {
-        val parseTree = new ParseTree(null);
+        val parseTree = new ParseTree((Program) null);
         val raw = parseTree.getProgram();
         assertNull(raw);
     }

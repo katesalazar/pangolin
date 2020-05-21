@@ -1,10 +1,12 @@
-package org.minia.pangolin;
+package org.minia.pangolin.scanner;
 
 import junit.framework.Test;
 import junit.framework.TestCase;
 import junit.framework.TestSuite;
 import lombok.val;
 import lombok.var;
+import org.minia.pangolin.Document;
+import org.minia.pangolin.Program;
 
 import java.util.ArrayList;
 
