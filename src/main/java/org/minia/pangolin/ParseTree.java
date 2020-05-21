@@ -2,19 +2,23 @@ package org.minia.pangolin;
 
 import lombok.Getter;
 
-import java.util.ArrayList;
-import java.util.List;
-
 public class ParseTree {
 
-    @Getter
-    private final Program raw;
+    enum Type { EMPTY,  NAMED_FUNCTION }
 
     @Getter
-    private final List<NamedFunction> namedFunctions;
+    private final Program program;
+
+    @Getter
+    private final Type type;
 
     public ParseTree(final Program program) {
-        raw = program;
-        namedFunctions = new ArrayList<>(16);
+        this.program = program;
+        type = null;
+    }
+
+    public ParseTree(final Program program, final Type type) {
+        this.program = program;
+        this.type = type;
     }
 }

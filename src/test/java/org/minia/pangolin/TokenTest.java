@@ -3,19 +3,19 @@ package org.minia.pangolin;
 import junit.framework.Test;
 import junit.framework.TestCase;
 import junit.framework.TestSuite;
-import lombok.val;
+import lombok.var;
 
 /**
  * Unit test.
  */
-public class ParseTreeTest extends TestCase
+public class TokenTest extends TestCase
 {
     /**
      * Create the test case
      *
      * @param testName name of the test case
      */
-    public ParseTreeTest(final String testName) {
+    public TokenTest(final String testName) {
         super(testName);
     }
 
@@ -23,12 +23,16 @@ public class ParseTreeTest extends TestCase
      * @return the suite of tests being tested
      */
     public static Test suite() {
-        return new TestSuite(ParseTreeTest.class);
+        return new TestSuite(TokenTest.class);
     }
 
     public void test0() {
-        val parseTree = new ParseTree(null);
-        val raw = parseTree.getProgram();
-        assertNull(raw);
+        var excepted = false;
+        try {
+            new Token(Token.Type.FUNCTION, "garbage");
+        } catch (AssertionError ignore) {
+            excepted = true;
+        }
+        assertTrue(excepted);
     }
 }

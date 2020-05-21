@@ -30,11 +30,12 @@ public class ParserTest extends TestCase
     }
 
     public void test0() {
-        val document = new Document("comment  comment ends");
+        val document = new Document("comment comment ends");
         val program = new Program(document);
         val parser = new Parser(program);
         val parseTree = parser.parse();
-        assertEquals(0, parseTree.getNamedFunctions().size());
+        val parseTreeType = parseTree.getType();
+        assertEquals(ParseTree.Type.EMPTY, parseTreeType);
     }
 
     public void test1() {
@@ -44,7 +45,8 @@ public class ParserTest extends TestCase
         val program = new Program(document);
         val parser = new Parser(program);
         val parseTree = parser.parse();
-        assertEquals(0, parseTree.getNamedFunctions().size());
+        val parseTreeType = parseTree.getType();
+        assertEquals(ParseTree.Type.NAMED_FUNCTION, parseTreeType);
     }
 
     public void test2() {
@@ -72,6 +74,106 @@ public class ParserTest extends TestCase
         try {
             parser.parse();
         } catch (AssertionError ignore) {
+            excepted = true;
+        }
+        assertTrue(excepted);
+    }
+
+    public void test4() {
+        val document = new Document("comment  comment ends");
+        val program = new Program(document);
+        val parser = new Parser(program);
+        val parseTree = parser.parse();
+        val parseTreeType = parseTree.getType();
+        assertEquals(ParseTree.Type.EMPTY, parseTreeType);
+    }
+
+    public void test5() {
+        val document = new Document("function ");
+        val program = new Program(document);
+        val parser = new Parser(program);
+        var excepted = false;
+        try {
+            parser.parse();
+        } catch (IllegalStateException ignore) {
+            excepted = true;
+        }
+        assertTrue(excepted);
+    }
+
+    public void test6() {
+        val document = new Document("function identifier stuff identifier ends ");
+        val program = new Program(document);
+        val parser = new Parser(program);
+        var excepted = false;
+        try {
+            parser.parse();
+        } catch (IllegalStateException ignore) {
+            excepted = true;
+        }
+        assertTrue(excepted);
+    }
+
+    public void test7() {
+        val document = new Document("end function function function function");
+        val program = new Program(document);
+        val parser = new Parser(program);
+        var excepted = false;
+        try {
+            parser.parse();
+        } catch (IllegalStateException ignore) {
+            excepted = true;
+        }
+        assertTrue(excepted);
+    }
+
+    public void test8() {
+        val document = new Document("function function function function function");
+        val program = new Program(document);
+        val parser = new Parser(program);
+        var excepted = false;
+        try {
+            parser.parse();
+        } catch (IllegalStateException ignore) {
+            excepted = true;
+        }
+        assertTrue(excepted);
+    }
+
+    public void test9() {
+        val document = new Document("function identifier stuff identifier ends function function function");
+        val program = new Program(document);
+        val parser = new Parser(program);
+        var excepted = false;
+        try {
+            parser.parse();
+        } catch (IllegalStateException ignore) {
+            excepted = true;
+        }
+        assertTrue(excepted);
+    }
+
+    public void test10() {
+        val document = new Document("function identifier stuff identifier ends end end function");
+        val program = new Program(document);
+        val parser = new Parser(program);
+        var excepted = false;
+        try {
+            parser.parse();
+        } catch (IllegalStateException ignore) {
+            excepted = true;
+        }
+        assertTrue(excepted);
+    }
+
+    public void test11() {
+        val document = new Document("function identifier stuff identifier ends end function function");
+        val program = new Program(document);
+        val parser = new Parser(program);
+        var excepted = false;
+        try {
+            parser.parse();
+        } catch (IllegalStateException ignore) {
             excepted = true;
         }
         assertTrue(excepted);

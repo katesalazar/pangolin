@@ -1,40 +1,104 @@
 package org.minia.pangolin;
 
-import lombok.var;
+import lombok.val;
+import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.apache.commons.lang3.tuple.Pair;
+
+import java.util.ArrayList;
+import java.util.List;
 
 import static org.minia.pangolin.Util.forceAssert;
+import static org.minia.pangolin.Util.forcedAssertion;
 
 public class Parser {
 
-    final Program program;
+    /**  {@link Program} to be parsed by this parser. */
+    private final Program program;
 
+    /**  Exhaustive constructor. */
     public Parser(final Program program) {
         this.program = program;
     }
 
     public ParseTree parse() {
+        final ParseTree stuff;
         synchronized (program) {
-            forceAssert(program.getDocuments().size() == 1);
-            var remainingStuff = program.getDocuments().get(0).getRaw();
-            do {
-                if (remainingStuff.toString().startsWith("comment ends")) {
-                    remainingStuff = remainingStuff.toString().substring("comment ends".length());
-                } else
-                if (remainingStuff.toString().startsWith("comment ")) {
-                    remainingStuff = remainingStuff.toString().substring("comment ".length());
-                } else if (remainingStuff.toString().startsWith("function ")) {
-                    remainingStuff = remainingStuff.toString().substring("function ".length());
-                } else if (remainingStuff.toString().startsWith(" ")) {
-                    remainingStuff = remainingStuff.toString().substring(1);
-                } else if (remainingStuff.toString().startsWith("identifier stuff identifier ends")) {
-                    remainingStuff = remainingStuff.toString().substring("identifier stuff identifier ends".length());
-                } else if (remainingStuff.toString().startsWith("end function identifier stuff identifier ends")) {
-                    remainingStuff = remainingStuff.toString().substring("end function identifier stuff identifier ends".length());
-                } else {
-                    throw new IllegalStateException("FIXME");
-                }
-            } while (remainingStuff.length() > 0);
+            stuff = synchronizedParse();
         }
-        return new ParseTree(program);
+        return stuff;
+    }
+
+    /**  This method is meant to be used from a synchronized block on
+     * {@link #program}. */
+    public ParseTree synchronizedParse() {
+        forceAssert(program.getDocuments().size() == 1);
+        val scanner = new Scanner(program);
+        List<Token> tokens = new ArrayList<>(16);
+        while (scanner.moreTokens()) {
+            val currentToken = scanner.nextToken();
+            if (currentToken != null) {
+                tokens.add(currentToken);
+            }
+        }
+        if (tokens.isEmpty()) {
+            return new ParseTree(program, ParseTree.Type.EMPTY);
+        }
+        while (canReduce(tokens)) {
+            Pair<ParseTree, List<Token>> stuff = reduce(tokens);
+            val parseTree = stuff.getLeft();
+            tokens = stuff.getRight();
+            if (tokens.isEmpty()) {
+                return parseTree;
+            }
+        }
+        throw new IllegalStateException("FIXME");
+    }
+
+    public boolean canReduce(final List<Token> tokens) {
+        return canReduceFunction(tokens);
+    }
+
+    public boolean canReduceFunction(final List<Token> tokens) {
+        if (tokens.size() < 5) {
+            return false;
+        }
+        val tokenZero = tokens.get(0);
+        val tokenOne = tokens.get(1);
+        val tokenTwo = tokens.get(2);
+        val tokenThree = tokens.get(3);
+        val tokenFour = tokens.get(4);
+        if (tokenZero.getType() != Token.Type.FUNCTION) {
+            return false;
+        }
+        if (tokenOne.notAnIdentifier()) {
+            return false;
+        }
+        if (tokenTwo.getType() != Token.Type.END) {
+            return false;
+        }
+        if (tokenThree.getType() != Token.Type.FUNCTION) {
+            return false;
+        }
+        if (tokenFour.notAnIdentifier()) {
+            return false;
+        }
+        return true;
+    }
+
+    public Pair<ParseTree, List<Token>> reduce(final List<Token> tokens) {
+        forcedAssertion(canReduceFunction(tokens));
+        return reduceFunction(tokens);
+    }
+
+    public Pair<ParseTree, List<Token>> reduceFunction(final List<Token> tokens) {
+        val namedFunctionNameToken = tokens.get(1);
+        val namedFunctionName = namedFunctionNameToken.getIdentifierName();
+        val namedFunction = new NamedFunction(namedFunctionName);
+        val returningTokens = new ArrayList<Token>(0);
+        return new ImmutablePair<ParseTree, List<Token>>(
+                new ParseTree(
+                        new Program(new Document("")),
+                        ParseTree.Type.NAMED_FUNCTION
+                ), returningTokens);
     }
 }

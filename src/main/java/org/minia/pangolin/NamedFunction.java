@@ -1,4 +1,10 @@
 package org.minia.pangolin;
 
-public interface NamedFunction {
+public class NamedFunction {
+
+    private final CharSequence name;
+
+    public NamedFunction(final CharSequence name) {
+        this.name = name;
+    }
 }
