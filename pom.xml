@@ -8,17 +8,18 @@
   <packaging>jar</packaging>
 
   <name>pangolin</name>
-  <url>http://maven.apache.org</url>
+  <url>http://vcs.minia.org/cgit/pangolin/</url>
 
   <properties>
 
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
-    <!-- This 4 lines are for getting Sonarcloud running. -->
+    <!-- This 4 lines are for getting SonarCloud running.
+       The login token can be revoked from the SonarCloud control panel any time. -->
     <sonar.projectKey>katesalazar_pangolin</sonar.projectKey>
     <sonar.organization>katesalazar-github</sonar.organization>
     <sonar.host.url>https://sonarcloud.io</sonar.host.url>
-    <sonar.login>0f1743f44eb3131eedf8a62812a308a4699b82f4</sonar.login>
+    <sonar.login>c1b5e81ac76c26f2980f54cc6cec2bfcd86750ae</sonar.login>
 
     <!-- I think Sonar complains about Java 5 not being supported anymore. -->
     <maven.compiler.source>1.7</maven.compiler.source>
@@ -36,12 +37,21 @@
       <scope>test</scope>
     </dependency>
 
+    <!-- Lombok added mainly in order to get Lombok `val`. */ -->
     <!-- https://mvnrepository.com/artifact/org.projectlombok/lombok -->
     <dependency>
       <groupId>org.projectlombok</groupId>
       <artifactId>lombok</artifactId>
       <version>1.18.12</version>
       <scope>provided</scope>
+    </dependency>
+
+    <!-- Commons Lang (3) added in order to get pairs (tuples). -->
+    <!-- https://mvnrepository.com/artifact/org.apache.commons/commons-lang3 -->
+    <dependency>
+      <groupId>org.apache.commons</groupId>
+      <artifactId>commons-lang3</artifactId>
+      <version>3.10</version>
     </dependency>
 
   </dependencies>
@@ -57,6 +67,7 @@
           <plugin>
             <groupId>org.jacoco</groupId>
             <artifactId>jacoco-maven-plugin</artifactId>
+            <version>0.8.5</version>
             <executions>
               <execution>
                 <id>prepare-agent</id>

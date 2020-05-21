@@ -5,9 +5,9 @@ import lombok.Getter;
 public class Document {
 
     @Getter
-    final CharSequence raw;
+    private final CharSequence raw;
 
-    public Document(final CharSequence cs) {
-        raw = cs;
+    public Document(final CharSequence raw) {
+        this.raw = raw;
     }
 }

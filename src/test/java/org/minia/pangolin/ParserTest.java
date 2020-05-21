@@ -30,11 +30,12 @@ public class ParserTest extends TestCase
     }
 
     public void test0() {
-        val document = new Document("comment  comment ends");
+        val document = new Document("comment comment ends");
         val program = new Program(document);
         val parser = new Parser(program);
         val parseTree = parser.parse();
-        assertEquals(0, parseTree.getNamedFunctions().size());
+        val parseTreeType = parseTree.getType();
+        assertEquals(ParseTree.Type.EMPTY, parseTreeType);
     }
 
     public void test1() {
@@ -44,7 +45,8 @@ public class ParserTest extends TestCase
         val program = new Program(document);
         val parser = new Parser(program);
         val parseTree = parser.parse();
-        assertEquals(0, parseTree.getNamedFunctions().size());
+        val parseTreeType = parseTree.getType();
+        assertEquals(ParseTree.Type.NAMED_FUNCTION, parseTreeType);
     }
 
     public void test2() {
