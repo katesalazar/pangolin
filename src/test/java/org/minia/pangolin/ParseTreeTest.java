@@ -30,5 +30,6 @@ public class ParseTreeTest extends TestCase
         val parseTree = new ParseTree(null);
         assertTrue(parseTree.getNamedFunctions().isEmpty());
         val raw = parseTree.getRaw();
+        assertNull(raw);
     }
 }

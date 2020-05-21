@@ -53,7 +53,7 @@ public class ParserTest extends TestCase
         val parser = new Parser(program);
         var excepted = false;
         try {
-            val parseTree = parser.parse();
+            parser.parse();
         } catch (IllegalStateException ignore) {
             excepted = true;
         }
@@ -64,11 +64,13 @@ public class ParserTest extends TestCase
         val aDocument = new Document("garbage");
         val anotherDocument = new Document("more garbage");
         val documents = new ArrayList<Document>(2);
+        documents.add(aDocument);
+        documents.add(anotherDocument);
         val program = new Program(documents);
         val parser = new Parser(program);
         var excepted = false;
         try {
-            val parseTree = parser.parse();
+            parser.parse();
         } catch (AssertionError ignore) {
             excepted = true;
         }
