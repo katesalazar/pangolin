@@ -11,11 +11,24 @@
   <url>http://maven.apache.org</url>
 
   <properties>
+
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+
+    <!-- This 4 lines are for getting Sonarcloud running. -->
+    <sonar.projectKey>katesalazar_pangolin</sonar.projectKey>
+    <sonar.organization>katesalazar-github</sonar.organization>
+    <sonar.host.url>https://sonarcloud.io</sonar.host.url>
+    <sonar.login>0f1743f44eb3131eedf8a62812a308a4699b82f4</sonar.login>
+
+    <!-- I think Sonar complains about Java 5 not being supported anymore. -->
+    <maven.compiler.source>1.8</maven.compiler.source>
+    <maven.compiler.target>1.8</maven.compiler.target>
+
   </properties>
 
   <dependencies>
-    <!-- Added by the maven archetype -->
+
+    <!-- Added by the Maven archetype. -->
     <dependency>
       <groupId>junit</groupId>
       <artifactId>junit</artifactId>
@@ -30,5 +43,7 @@
       <version>1.18.12</version>
       <scope>provided</scope>
     </dependency>
+
   </dependencies>
+
 </project>
