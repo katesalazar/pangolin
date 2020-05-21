@@ -31,6 +31,7 @@ public class UtilTest extends TestCase
 
     public void test0() {
         val util = new Util();
+        assertNotNull(util);
     }
 
     public void test1() {

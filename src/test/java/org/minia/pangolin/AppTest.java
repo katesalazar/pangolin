@@ -27,6 +27,8 @@ public class AppTest extends TestCase
     }
 
     public void test0() {
+        val app = new App();
+        assertNotNull(app);
         App.main(new String[]{});
     }
 }
