@@ -1,4 +1,4 @@
 package org.minia.pangolin;
 
-public class NamedFunction {
+public interface NamedFunction {
 }

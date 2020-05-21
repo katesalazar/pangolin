@@ -14,4 +14,8 @@ public class Program {
         documents = new ArrayList<>(1);
         documents.add(document);
     }
+
+    public Program(final List<Document> documents) {
+        this.documents = documents;
+    }
 }
