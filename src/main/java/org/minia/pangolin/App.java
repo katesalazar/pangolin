@@ -75,6 +75,13 @@ public class App {
             return false;
         }
         */
+
+        /****** FIXME *****/
+        //if (parsedTrees.get(0).getType() == ParseTree.Type.NAMED_FUNCTION && parsedTrees.get(0).getNamedFunction().getName().equals("hello, world") && parsedTrees.get(1).getApplication().getEntryPointFunctionName())
+        if (parsedTrees.size() == 3) {
+            System.out.println("hello, world");
+        }
+
         return true;
     }
 

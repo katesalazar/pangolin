@@ -1,9 +1,13 @@
 package org.minia.pangolin.syntaxtree;
 
+import lombok.Getter;
+
 public class NamedFunction {
 
+    @Getter
     private final CharSequence name;
 
+    @Getter
     private final Operations operations;
 
     public NamedFunction(

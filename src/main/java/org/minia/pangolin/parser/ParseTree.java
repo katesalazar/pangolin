@@ -19,10 +19,13 @@ public class ParseTree {
     @Getter
     private final Type type;
 
+    @Getter
     private final NamedFunction namedFunction;
 
+    @Getter
     private final Application application;
 
+    @Getter
     private final ExecutionRequest executionRequest;
 
     public ParseTree(final Program program) {
