@@ -1,12 +1,13 @@
-package org.minia.pangolin;
+package org.minia.pangolin.parser;
 
 import junit.framework.Test;
 import junit.framework.TestCase;
 import junit.framework.TestSuite;
 import lombok.val;
+import org.minia.pangolin.Program;
 
 /**
- * Unit test for simple App.
+ * Unit test.
  */
 public class ParseTreeTest extends TestCase
 {
@@ -15,24 +16,20 @@ public class ParseTreeTest extends TestCase
      *
      * @param testName name of the test case
      */
-    public ParseTreeTest( String testName )
-    {
-        super( testName );
+    public ParseTreeTest(final String testName) {
+        super(testName);
     }
 
     /**
      * @return the suite of tests being tested
      */
     public static Test suite() {
-        return new TestSuite( ParseTreeTest.class );
+        return new TestSuite(ParseTreeTest.class);
     }
 
-    /**
-     * Rigourous Test :-)
-     */
-    public void testApp()
-    {
-        val parseTree = new ParseTree(null);
-        assertTrue(parseTree.getNamedFunctions().isEmpty());
+    public void test0() {
+        val parseTree = new ParseTree((Program) null);
+        val raw = parseTree.getProgram();
+        assertNull(raw);
     }
 }
