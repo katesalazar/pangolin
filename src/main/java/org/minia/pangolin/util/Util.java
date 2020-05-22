@@ -1,4 +1,4 @@
-package org.minia.pangolin;
+package org.minia.pangolin.util;
 
 public class Util {
 

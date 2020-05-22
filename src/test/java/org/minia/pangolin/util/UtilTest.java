@@ -1,4 +1,4 @@
-package org.minia.pangolin;
+package org.minia.pangolin.util;
 
 import junit.framework.Test;
 import junit.framework.TestCase;
@@ -6,7 +6,7 @@ import junit.framework.TestSuite;
 import lombok.val;
 import lombok.var;
 
-import static org.minia.pangolin.Util.forceAssert;
+import static org.minia.pangolin.util.Util.forceAssert;
 
 /**
  * Unit test.

@@ -1,10 +1,12 @@
-package org.minia.pangolin;
+package org.minia.pangolin.parser;
 
 import junit.framework.Test;
 import junit.framework.TestCase;
 import junit.framework.TestSuite;
 import lombok.val;
 import lombok.var;
+import org.minia.pangolin.Document;
+import org.minia.pangolin.Program;
 
 import java.util.ArrayList;
 
@@ -33,7 +35,9 @@ public class ParserTest extends TestCase
         val document = new Document("comment comment ends");
         val program = new Program(document);
         val parser = new Parser(program);
-        val parseTree = parser.parse();
+        val parsedTrees = parser.parse();
+        assertEquals(1, parsedTrees.size());
+        val parseTree = parsedTrees.get(0);
         val parseTreeType = parseTree.getType();
         assertEquals(ParseTree.Type.EMPTY, parseTreeType);
     }
@@ -44,9 +48,13 @@ public class ParserTest extends TestCase
                 "end function identifier stuff identifier ends");
         val program = new Program(document);
         val parser = new Parser(program);
-        val parseTree = parser.parse();
-        val parseTreeType = parseTree.getType();
-        assertEquals(ParseTree.Type.NAMED_FUNCTION, parseTreeType);
+        var excepted = false;
+        try {
+            parser.parse();
+        } catch (IllegalStateException ignore) {
+            excepted = true;
+        }
+        assertTrue(excepted);
     }
 
     public void test2() {
@@ -83,7 +91,9 @@ public class ParserTest extends TestCase
         val document = new Document("comment  comment ends");
         val program = new Program(document);
         val parser = new Parser(program);
-        val parseTree = parser.parse();
+        val parsedTrees = parser.parse();
+        assertEquals(1, parsedTrees.size());
+        val parseTree = parsedTrees.get(0);
         val parseTreeType = parseTree.getType();
         assertEquals(ParseTree.Type.EMPTY, parseTreeType);
     }

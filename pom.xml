@@ -89,6 +89,8 @@
     </plugins>
   </build>
 
+  <!-- This enabled code coverage at SonarCloud.
+     https://sonarcloud.io/organizations/katesalazar-github/projects -->
   <profiles>
     <profile>
       <id>coverage</id>
