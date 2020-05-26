@@ -1,9 +1,11 @@
 package org.minia.pangolin.scanner;
 
 import lombok.Getter;
+import lombok.ToString;
 
 import static org.minia.pangolin.util.Util.forcedAssertion;
 
+@ToString
 public class Token {
 
     /**  Lower case `a` word, as a {@link String}. */
@@ -20,6 +22,9 @@ public class Token {
 
     /**  Lower case `at` word, as a {@link String}. */
     static final String LC_AT = "at";
+
+    /**  Lower case `bound` word, as a {@link String}. */
+    static final String LC_BOUND = "bound";
 
     /**  Lower case `causes` word, as a {@link String}. */
     static final String LC_CAUSES = "causes";
@@ -87,15 +92,20 @@ public class Token {
     /**  Lower case `then` word, as a {@link String}. */
     static final String LC_THEN = "then";
 
+    /**  Lower case `to` word, as a {@link String}. */
+    static final String LC_TO = "to";
+
+    /**  Lower case `where` word, as a {@link String}. */
+    static final String LC_WHERE = "where";
+
     public enum Type {
-        A, ALL, AND, APPLICATION, AT, CAUSES, COMMAND, DOES, EFFECTS,
-        END, ENTRY, FUNCTION, IDENTIFIER, INTERFACE, IS, IT, LINE, NEW,
-        NOTHING, POINT, PRINT, RECEIVES, RETURNS, RUN, SIDE, SO,
-        STRING_LITERAL, THE, THEN
+        A, ALL, AND, APPLICATION, AT, BOUND, CAUSES, COMMAND, DOES, EFFECTS,
+        END, ENTRY, FUNCTION, IDENTIFIER, INTERFACE, IS, IT, LINE,
+        NATURAL_LITERAL, NEW, NOTHING, POINT, PRINT, RECEIVES, RETURNS, RUN,
+        SIDE, SO, STRING_LITERAL, THE, THEN, TO, WHERE
     }
 
-    @Getter
-    private final Type type;
+    @Getter private final Type type;
 
     /**  <p>If this {@link Token} is an identifier (i.e. it is of the
      * `IDENTIFIER` type), then this holds the name of that identifier,
@@ -106,29 +116,50 @@ public class Token {
     /**  <p>If this {@link Token} is a string literal (i.e. it is of the
      * `STRING_LITERAL` type), then this holds the contents of that
      * string literal. */
-    private final CharSequence stringLiteralContent;
+    @Getter private final CharSequence stringLiteralContent;
+
+    /**  <p>If this {@link Token} is a natural literal (i.e. it is of
+     * the `NATURAL_LITERAL` type), then this holds the contents of that
+     * natural literal. */
+    @Getter private final CharSequence naturalLiteralContent;
 
     /**  General {@link Token} constructor. */
     public Token(final Type type) {
         this.type = type;
         identifierName = null;
         stringLiteralContent = null;
+        naturalLiteralContent = null;
     }
 
     /**  Particular {@link Token} constructor when the {@link
      *  Token.Type} of the {@link Token} is `IDENTIFIER` or
      *  `STRING_LITERAL``. */
     public Token(final Type type, final CharSequence cs) {
-        if (type != Type.IDENTIFIER) {
-            forcedAssertion(type == Type.STRING_LITERAL);
-        }
+
         this.type = type;
+
         if (type == Type.IDENTIFIER) {
-            identifierName = cs;
+
+            //   The `.toString()` call necessary because `cs` is
+            // `StringBuilder` instead of `String`.
+            identifierName = cs.toString().trim();
             stringLiteralContent = null;
-        } else {
+            naturalLiteralContent = null;
+        } else if (type == Type.STRING_LITERAL) {
+
             identifierName = null;
-            stringLiteralContent = cs;
+            //   The `.toString()` call necessary because `cs` is
+            // `StringBuilder` instead of `String`.
+            stringLiteralContent = cs.toString().trim();
+            naturalLiteralContent = null;
+        } else {
+            forcedAssertion(type == Type.NATURAL_LITERAL);
+
+            identifierName = null;
+            stringLiteralContent = null;
+            //   The `.toString()` call necessary because `cs` is
+            // `StringBuilder` instead of `String`.
+            naturalLiteralContent = cs.toString().trim();
         }
     }
 
@@ -148,6 +179,8 @@ public class Token {
                 return LC_APPLICATION;
             case AT:
                 return LC_AT;
+            case BOUND:
+                return LC_BOUND;
             case CAUSES:
                 return LC_CAUSES;
             case COMMAND:
@@ -170,6 +203,8 @@ public class Token {
                 return LC_IT;
             case LINE:
                 return LC_LINE;
+            case NATURAL_LITERAL:
+                return token.naturalLiteralContent.toString();
             case NEW:
                 return LC_NEW;
             case NOTHING:
@@ -192,6 +227,10 @@ public class Token {
                 return LC_THE;
             case THEN:
                 return LC_THEN;
+            case TO:
+                return LC_TO;
+            case WHERE:
+                return LC_WHERE;
             default:
                 throw new IllegalArgumentException("FIXME");
         }

@@ -11,6 +11,9 @@ UNAME_S=`uname -s`
 if test "${UNAME_S}" = 'Darwin'
 then
     JAVA_HOME=/Library/Java/JavaVirtualMachines/jdk-11.0.7.jdk/Contents/Home/ /Users/$USER/Desktop/dat/not_backed_up/3rd_party/apache-maven-3.6.3/bin/mvn verify sonar:sonar
+elif test "${UNAME_S}" = 'CYGWIN_NT-6.1'
+then
+    echo "where's maven???"
 else
     echo 'unknown operating system'
     exit ${FAILURE}

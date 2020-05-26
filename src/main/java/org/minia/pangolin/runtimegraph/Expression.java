@@ -1,4 +1,3 @@
 package org.minia.pangolin.runtimegraph;
 
-public interface Expression {
-}
+public interface Expression {}

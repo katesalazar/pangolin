@@ -9,7 +9,7 @@ import org.minia.pangolin.syntaxtree.NamedFunction;
 public class ParseTree {
 
     public enum Type {
-        APPLICATION, DOC, DOC_FRAGMENT, EMPTY, EXECUTION_REQUEST,
+        APPLICATION, /* DOC, DOC_FRAGMENT, */ EMPTY, EXECUTION_REQUEST,
         NAMED_FUNCTION
     }
 

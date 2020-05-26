@@ -3,6 +3,7 @@ package org.minia.pangolin.scanner;
 import junit.framework.Test;
 import junit.framework.TestCase;
 import junit.framework.TestSuite;
+import lombok.val;
 import lombok.var;
 
 /**
@@ -45,5 +46,15 @@ public class TokenTest extends TestCase
             excepted = true;
         }
         assertTrue(excepted);
+    }
+
+    public void testNotAnIdentifier0() {
+        val token = new Token(Token.Type.A);
+        assertTrue(token.notAnIdentifier());
+    }
+
+    public void testNotAnIdentifier1() {
+        val token = new Token(Token.Type.IDENTIFIER);
+        assertFalse(token.notAnIdentifier());
     }
 }
