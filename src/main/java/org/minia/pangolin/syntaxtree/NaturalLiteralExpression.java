@@ -6,6 +6,7 @@ import static org.minia.pangolin.util.Util.forceAssert;
 
 public class NaturalLiteralExpression implements Expression {
 
+    @SuppressWarnings({"java:S1068"}) // "unused private field"
     private Token naturalLiteralToken;
 
     /** Invalidated default constructor. */
@@ -20,7 +21,7 @@ public class NaturalLiteralExpression implements Expression {
         this.naturalLiteralToken = naturalLiteralToken;
     }
 
-    public static NaturalLiteralExpression fromNaturalLiteral(
+    public static NaturalLiteralExpression fromNaturalLiteralToken(
             final Token token) {
 
         forceAssert(token.getType() == Token.Type.NATURAL_LITERAL);

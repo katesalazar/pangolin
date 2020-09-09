@@ -4,7 +4,6 @@ import junit.framework.Test;
 import junit.framework.TestCase;
 import junit.framework.TestSuite;
 import lombok.val;
-import org.apache.commons.lang3.NotImplementedException;
 import org.minia.pangolin.parser.LanguageNotRecognizedException;
 
 /**
@@ -63,7 +62,14 @@ public class AppTest extends TestCase
     }
 
     public void test5() throws LanguageNotRecognizedException {
-        val runAppResult = App.runApp("src/main/resources/single_where_clause/");
+        val runAppResult =
+                App.runApp("src/main/resources/single_where_clause/");
+        assertEquals(true, runAppResult);
+    }
+
+    public void test6() throws LanguageNotRecognizedException {
+        val runAppResult =
+                App.runApp("src/main/resources/double_where_clause/");
         assertEquals(true, runAppResult);
     }
 }

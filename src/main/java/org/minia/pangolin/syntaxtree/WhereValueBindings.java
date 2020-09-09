@@ -5,7 +5,7 @@ import java.util.List;
 
 public class WhereValueBindings {
 
-    @SuppressWarnings({"java:S10684"}) // "unused private field"
+    @SuppressWarnings({"java:S1068"}) // "unused private field"
     private final List<WhereValueBinding> whereValueBindingsList;
 
     public WhereValueBindings(
