@@ -4,8 +4,8 @@ import lombok.Getter;
 
 public class ExecutionRequest {
 
-    @Getter
-    private final CharSequence applicationRequestedToBeExecutedName;
+    @Getter private final CharSequence
+    applicationRequestedToBeExecutedName;
 
     public ExecutionRequest(
             final CharSequence applicationRequestedToBeExecutedName) {

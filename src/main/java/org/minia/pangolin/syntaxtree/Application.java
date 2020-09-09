@@ -4,11 +4,9 @@ import lombok.Getter;
 
 public class Application {
 
-    @Getter
-    private final CharSequence applicationName;
+    @Getter private final CharSequence applicationName;
 
-    @Getter
-    private final CharSequence entryPointFunctionName;
+    @Getter private final CharSequence entryPointFunctionName;
 
     public Application(
             final CharSequence applicationName,

@@ -30,46 +30,63 @@ public class AppTest extends TestCase
     public void test0() {
         val app = new App();
         assertNotNull(app);
-        val result = App.fakeableMain(
-                new String[]{"run", "app", "examples/0_hello_world"});
-        assertEquals(0, result);
+        app.fakeableMain(new String[]{"greet", "--no-banner"});
     }
 
     public void test1() {
         val app = new App();
         assertNotNull(app);
-        App.fakeableMain(new String[]{"greet", "--no-banner"});
+        app.fakeableMain(
+                new String[]{"run", "app", "examples/this_should_never_exist"});
     }
 
     public void test2() {
         val app = new App();
         assertNotNull(app);
-        App.fakeableMain(
-                new String[]{"run", "app", "examples/this_should_never_exist"});
-    }
-
-    public void test3() {
-        val app = new App();
-        assertNotNull(app);
-        val result = App.fakeableMain(new String[]{
+        val result = app.fakeableMain(new String[]{
                 "run", "app", "src/main/resources/single_where_clause/"});
         assertEquals(0, result);
     }
 
+    public void test3() throws LanguageNotRecognizedException {
+        val app = new App();
+        val runAppResult =
+                app.runApp("src/main/resources/single_where_clause/");
+        assertEquals(true, runAppResult);
+    }
+
     public void test4() throws LanguageNotRecognizedException {
-        val runAppResult = App.runApp("examples/0_hello_world");
+        val app = new App();
+        val runAppResult =
+                app.runApp("src/main/resources/double_where_clause/");
         assertEquals(true, runAppResult);
     }
 
     public void test5() throws LanguageNotRecognizedException {
-        val runAppResult =
-                App.runApp("src/main/resources/single_where_clause/");
+        val app = new App();
+        val runAppResult = app.runApp("examples/0_hello_world");
         assertEquals(true, runAppResult);
     }
 
-    public void test6() throws LanguageNotRecognizedException {
+    public void test6() {
+        val app = new App();
+        assertNotNull(app);
+        val result = app.fakeableMain(
+                new String[]{"run", "app", "examples/0_hello_world"});
+        assertEquals(0, result);
+    }
+
+    public void test7() throws LanguageNotRecognizedException {
+        val app = new App();
         val runAppResult =
-                App.runApp("src/main/resources/double_where_clause/");
+                app.runApp("src/main/resources/single_where_clause_and_run/");
+        assertEquals(true, runAppResult);
+    }
+
+    public void test8() throws LanguageNotRecognizedException {
+        val app = new App();
+        val runAppResult =
+                app.runApp("src/main/resources/double_where_clause_and_run/");
         assertEquals(true, runAppResult);
     }
 }

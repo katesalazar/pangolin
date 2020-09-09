@@ -29,7 +29,7 @@ public class NamedFunctionTest extends TestCase
 
     public void test0() {
 
-        val namedFunction = new NamedFunction(null, null);
+        val namedFunction = new NamedFunction(null, null, null);
         assertNull(namedFunction.getName());
         assertNull(namedFunction.getOperations());
     }

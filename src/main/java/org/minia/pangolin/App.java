@@ -5,16 +5,17 @@ import lombok.val;
 import org.minia.pangolin.parser.LanguageNotRecognizedException;
 import org.minia.pangolin.parser.ParseTree;
 import org.minia.pangolin.parser.Parser;
-import org.minia.pangolin.scanner.Token;
-import org.minia.pangolin.syntaxtree.NewLineOperation;
-import org.minia.pangolin.syntaxtree.Operation;
-import org.minia.pangolin.syntaxtree.Operations;
-import org.minia.pangolin.syntaxtree.PrintOperation;
+import org.minia.pangolin.runtimegraph.Application;
+import org.minia.pangolin.runtimegraph.ExecutionRequest;
+import org.minia.pangolin.runtimegraph.NamedFunction;
+import org.minia.pangolin.semantics.UnboundIdentifierException;
 
 import java.io.BufferedReader;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 import static org.minia.pangolin.util.Util.forcedAssertion;
 
@@ -38,7 +39,11 @@ public class App {
         return true;
     }
 
-    static boolean runApp(final String app)
+    App() {
+        super();
+    }
+
+    boolean runApp(final String app)
             throws LanguageNotRecognizedException {
 
         val pathToMain = app + "/main.minia";
@@ -65,58 +70,38 @@ public class App {
         val parser = new Parser(program);
         val parsedTrees = parser.parse();
 
-        forcedAssertion(parsedTrees.size() == 1 || parsedTrees.size() == 3);
+        final List<NamedFunction> namedFunctions = new ArrayList<>(16);
+        final List<Application> applications = new ArrayList<>(16);
+        final List<ExecutionRequest> executionRequests =
+                new ArrayList<>(16);
 
-        if (parsedTrees.size() == 3) {
-        val namedFunctionParseTree = parsedTrees.get(0);
-        forcedAssertion(namedFunctionParseTree.getType() ==
-                ParseTree.Type.NAMED_FUNCTION);
-        val namedFunction = namedFunctionParseTree.getNamedFunction();
-        val namedFunctionName = namedFunction.getName();
-        forcedAssertion("main".contentEquals(namedFunctionName));
-        val namedFunctionOperations = namedFunction.getOperations();
-        forcedAssertion(2 == namedFunctionOperations.size());
-        forcedAssertion(Operations.RunTimeInterleave.SEQUENTIAL ==
-                namedFunctionOperations.getRunTimeInterleave());
-        val namedFunctionOperationsList =
-                namedFunctionOperations.getOperations();
-        forcedAssertion(2 == namedFunctionOperationsList.size());
-        final Operation operationZero = namedFunctionOperationsList.get(0);
-        forcedAssertion(PrintOperation.class.equals(operationZero.getClass()));
-        final PrintOperation printOperation = (PrintOperation) operationZero;
-        val printOperationToken = printOperation.getToken();
-        forcedAssertion(Token.Type.STRING_LITERAL ==
-                printOperationToken.getType());
-        val printOperationTokenStringLiteralContent =
-                printOperationToken.getStringLiteralContent();
-        forcedAssertion(
-                HELLO_WORLD.equals(printOperationTokenStringLiteralContent));
-        final Operation operationOne = namedFunctionOperationsList.get(1);
-        forcedAssertion(NewLineOperation.class.equals(operationOne.getClass()));
-        val applicationParseTree = parsedTrees.get(1);
-        forcedAssertion(applicationParseTree.getType() ==
-                ParseTree.Type.APPLICATION);
-        val application = applicationParseTree.getApplication();
-        val applicationName = application.getApplicationName();
-        forcedAssertion(HELLO_WORLD.contentEquals(applicationName));
-        val applicationEntryPointFunctionName =
-                application.getEntryPointFunctionName();
-        forcedAssertion(
-                "main".contentEquals(applicationEntryPointFunctionName));
-        val executionRequestParseTree = parsedTrees.get(2);
-        forcedAssertion(executionRequestParseTree.getType() ==
-                ParseTree.Type.EXECUTION_REQUEST);
-        val executionRequest = executionRequestParseTree.getExecutionRequest();
-        val applicationRequestedToBeExecutedName =
-                executionRequest.getApplicationRequestedToBeExecutedName();
-        forcedAssertion(HELLO_WORLD.contentEquals(
-                applicationRequestedToBeExecutedName));
-        print();
-
-        return true;
-        } else {
-            return true;  // XXX ???
+        for (final ParseTree parseTree : parsedTrees) {
+            if (ParseTree.Type.NAMED_FUNCTION == parseTree.getType()) {
+                try {
+                    namedFunctions.add(
+                            parseTree.namedFunctionForRunTimeGraph());
+                } catch (final UnboundIdentifierException uie) {
+                    log.severe(uie.getMessage());
+                    return false;
+                }
+            } else if (ParseTree.Type.APPLICATION ==
+                    parseTree.getType()) {
+                applications.add(parseTree.applicationForRunTimeGraph(
+                        namedFunctions));
+            } else {
+                forcedAssertion(ParseTree.Type.EXECUTION_REQUEST ==
+                        parseTree.getType());
+                executionRequests.add(
+                        parseTree.executionRequestForRunTimeGraph(
+                                applications));
+            }
         }
+
+        for (final ExecutionRequest executionRequest:
+                executionRequests) {
+            executionRequest.run();
+        }
+        return true;  // XXX
     }
 
     @SuppressWarnings("java:S106") /* Do not use `System.out`. */
@@ -138,7 +123,7 @@ public class App {
      *   @param args They come from {@link #main}.
      *   @return Boolean `true` or `false` whether it runs with no error
      * or an error happened, respectively. */
-    private static boolean process(final String[] args) {
+    private boolean process(final String[] args) {
 
         for (int i = 0; i < args.length; i++) {
             if ("run".equals(args[i]) &&
@@ -158,7 +143,7 @@ public class App {
     }
 
     /**  <p>Proxy `main`. Proxies {@link #main}. */
-    public static int fakeableMain(final String[] args) {
+    public int fakeableMain(final String[] args) {
 
         if (canPrintBanner(args)) {
             log.info(FIGLET_THREEPOINT);
@@ -173,7 +158,7 @@ public class App {
      * proxy. */
     public static void main(final String[] args) {
 
-        val exitStatus = fakeableMain(args);
+        val exitStatus = new App().fakeableMain(args);
         if (exitStatus == 1) {
             System.exit(exitStatus);
         }

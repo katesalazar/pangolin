@@ -2,9 +2,14 @@ package org.minia.pangolin.parser;
 
 import lombok.Getter;
 import org.minia.pangolin.Program;
+import org.minia.pangolin.semantics.UnboundIdentifierException;
 import org.minia.pangolin.syntaxtree.Application;
 import org.minia.pangolin.syntaxtree.ExecutionRequest;
 import org.minia.pangolin.syntaxtree.NamedFunction;
+
+import java.util.List;
+
+import static org.minia.pangolin.util.Util.forceAssert;
 
 public class ParseTree {
 
@@ -13,20 +18,15 @@ public class ParseTree {
         NAMED_FUNCTION
     }
 
-    @Getter
-    private final Program program;
+    @Getter private final Program program;
 
-    @Getter
-    private final Type type;
+    @Getter private final Type type;
 
-    @Getter
-    private final NamedFunction namedFunction;
+    @Getter private final NamedFunction namedFunction;
 
-    @Getter
-    private final Application application;
+    @Getter private final Application application;
 
-    @Getter
-    private final ExecutionRequest executionRequest;
+    @Getter private final ExecutionRequest executionRequest;
 
     public ParseTree(final Program program) {
         this.program = program;
@@ -66,5 +66,34 @@ public class ParseTree {
         namedFunction = null;
         application = null;
         this.executionRequest = executionRequest;
+    }
+
+    public org.minia.pangolin.runtimegraph.NamedFunction
+    namedFunctionForRunTimeGraph()
+            throws UnboundIdentifierException {
+
+        forceAssert(Type.NAMED_FUNCTION == type);
+        return new org.minia.pangolin.runtimegraph.NamedFunctionFactory().from(
+                this.namedFunction);
+    }
+
+    public org.minia.pangolin.runtimegraph.Application
+    applicationForRunTimeGraph(
+            final List<org.minia.pangolin.runtimegraph.NamedFunction> namedFunctions)
+                    throws LanguageNotRecognizedException {
+
+        forceAssert(Type.APPLICATION == type);
+        return org.minia.pangolin.runtimegraph.Application.from(
+                this.application, namedFunctions);
+    }
+
+    public org.minia.pangolin.runtimegraph.ExecutionRequest
+    executionRequestForRunTimeGraph(
+            final List<org.minia.pangolin.runtimegraph.Application> applications)
+                    throws LanguageNotRecognizedException {
+
+        forceAssert(Type.EXECUTION_REQUEST == type);
+        return org.minia.pangolin.runtimegraph.ExecutionRequest.from(
+                this.executionRequest, applications);
     }
 }

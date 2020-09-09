@@ -1,12 +1,13 @@
 package org.minia.pangolin.syntaxtree;
 
+import lombok.Getter;
 import org.minia.pangolin.scanner.Token;
 
 import static org.minia.pangolin.util.Util.forceAssert;
 
 public class IdentifierExpression implements Expression {
 
-    @SuppressWarnings({"java:S1068"}) // "unused private field"
+    @Getter
     private Token identifierToken;
 
     /** Invalidated default constructor. */

@@ -18,4 +18,15 @@ public class WhereValueBinding {
         identifier = identifierToken.getIdentifierName();
         this.expression = expression;
     }
+
+    public boolean bound(final CharSequence identifier) {
+        return this.identifier.equals(identifier);
+    }
+
+    public Expression expressionFor(final CharSequence identifier) {
+        if (this.identifier.equals(identifier)) {
+            return expression;
+        }
+        throw new IllegalStateException("FIXME");
+    }
 }

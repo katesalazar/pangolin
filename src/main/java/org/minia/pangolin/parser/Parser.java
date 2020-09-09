@@ -714,15 +714,17 @@ public class Parser {
                 tokensAfterAndDoesClauseReduction);
         val functionOperations =
                 reduceFunctionBodyClauseReturnedPair.getLeft();
+        val functionWhereClauses =
+                reduceFunctionBodyClauseReturnedPair.getMiddle();
         val remainingTokensAfterFunctionBody =
                 reduceFunctionBodyClauseReturnedPair.getRight();
         val remainingTokensAfterFunctionReduction = reduceFunctionTail(
                 remainingTokensAfterFunctionBody, expectedFunctionName);
         val functionName = expectedFunctionName;
         return new ImmutablePair<>(
-                new NamedFunction(functionName, functionOperations),
-                remainingTokensAfterFunctionReduction
-        );
+                new NamedFunction(
+                        functionName, functionOperations, functionWhereClauses),
+                remainingTokensAfterFunctionReduction);
     }
 
     /**  @return A {@link Pair} where the left side holds the name of
