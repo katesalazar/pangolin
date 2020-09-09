@@ -3,11 +3,17 @@
   <modelVersion>4.0.0</modelVersion>
 
   <groupId>org.minia</groupId>
+  <!--
   <artifactId>pangolin</artifactId>
+  -->
+  <artifactId>pangolin_integration</artifactId>
   <version>0.0.1-SNAPSHOT</version>
   <packaging>jar</packaging>
 
+  <!--
   <name>pangolin</name>
+  -->
+  <name>pangolin_integration</name>
   <url>http://vcs.minia.org/cgit/pangolin/</url>
 
   <properties>
@@ -16,7 +22,13 @@
 
     <!-- This 4 lines are for getting SonarCloud running.
        The login token can be revoked from the SonarCloud control panel any time. -->
+    <!--
     <sonar.projectKey>katesalazar_pangolin</sonar.projectKey>
+    -->
+    <sonar.projectKey>katesalazar_pangolin_integration</sonar.projectKey>
+    <!--
+    <sonar.projectKey>katesalazar_pangolin_experimental</sonar.projectKey>
+    -->
     <sonar.organization>katesalazar-github</sonar.organization>
     <sonar.host.url>https://sonarcloud.io</sonar.host.url>
     <sonar.login>c1b5e81ac76c26f2980f54cc6cec2bfcd86750ae</sonar.login>

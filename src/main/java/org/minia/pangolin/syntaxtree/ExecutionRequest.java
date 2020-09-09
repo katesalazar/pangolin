@@ -5,12 +5,12 @@ import lombok.Getter;
 public class ExecutionRequest {
 
     @Getter
-    private final CharSequence applicationRequestedToBeExecuted;
+    private final CharSequence applicationRequestedToBeExecutedName;
 
     public ExecutionRequest(
-            final CharSequence applicationRequestedToBeExecuted) {
+            final CharSequence applicationRequestedToBeExecutedName) {
 
-        this.applicationRequestedToBeExecuted =
-                applicationRequestedToBeExecuted;
+        this.applicationRequestedToBeExecutedName =
+                applicationRequestedToBeExecutedName;
     }
 }

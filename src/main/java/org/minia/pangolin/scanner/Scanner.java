@@ -40,6 +40,8 @@ public class Scanner {
         currentStringLiteral = new StringBuilder(16);
     }
 
+    /**  <p>This can surely be optimized by not performing repeated
+     * {@link CharSequence#length()} calls. */
     public boolean moreTokens() {
         val documents = program.getDocuments();
         forcedAssertion(documents.size() == 1);
@@ -47,6 +49,7 @@ public class Scanner {
         return index < document.getRaw().length();
     }
 
+    @SuppressWarnings({"java:S1135", "java:S3776"}) /* Track uses of "TODO" tags. */ /* Cognitive Complexity of methods should not be too high. */
     public Token nextToken() {
         forcedAssertion(moreTokens());
         //   `documents.size() == 1`, as asserted inside `moreTokens()`.
@@ -70,7 +73,23 @@ public class Scanner {
                     index += "identifier ends".length();
                     expectingIdentifierEnd = false;
                     removeTrailingWhitespaces(currentIdentifier);
-                    returning = new Token(Token.Type.IDENTIFIER, currentIdentifier);
+                    returning = new Token(
+                            Token.Type.IDENTIFIER, currentIdentifier);
+                    currentIdentifier.setLength(0);
+                } else if (remainingStuff.startsWith("ident ends")) {
+                    index += "ident ends".length();
+                    expectingIdentifierEnd = false;
+                    removeTrailingWhitespaces(currentIdentifier);
+                    returning = new Token(
+                            Token.Type.IDENTIFIER, currentIdentifier);
+                    currentIdentifier.setLength(0);
+                } else if (remainingStuff.startsWith("id ends")) {
+                    index += "id ends".length();
+                    expectingIdentifierEnd = false;
+                    removeTrailingWhitespaces(currentIdentifier);
+                    returning = new Token(
+                            Token.Type.IDENTIFIER, currentIdentifier);
+                    currentIdentifier.setLength(0);
                 } else {
                     currentIdentifier.append(remainingStuff.charAt(0));
                     index += 1;
@@ -80,7 +99,9 @@ public class Scanner {
                     index += "string literal ends".length();
                     expectingStringLiteralEnd = false;
                     removeTrailingWhitespaces(currentStringLiteral);
-                    returning = new Token(Token.Type.STRING_LITERAL, currentStringLiteral);
+                    returning = new Token(
+                            Token.Type.STRING_LITERAL, currentStringLiteral);
+                    currentStringLiteral.setLength(0);
                 } else {
                     currentStringLiteral.append(remainingStuff.charAt(0));
                     index += 1;
@@ -91,15 +112,28 @@ public class Scanner {
             } else if (remainingStuff.startsWith("identifier")) {
                 index += "identifier".length();
                 expectingIdentifierEnd = true;
+            } else if (remainingStuff.startsWith("ident")) {
+                index += "ident".length();
+                expectingIdentifierEnd = true;
+            } else if (remainingStuff.startsWith("id")) {
+                index += "id".length();
+                expectingIdentifierEnd = true;
             } else if (remainingStuff.startsWith("string literal")) {
                 index += "string literal".length();
                 expectingStringLiteralEnd = true;
             } else {
-                val canConsumeTokenImmediately = canConsumeTokenImmediately(remainingStuff);
+                val canConsumeTokenImmediately =
+                        canConsumeTokenImmediately(remainingStuff);
                 val canConsumeToken = canConsumeTokenImmediately.getLeft();
                 if (canConsumeToken) {
                     val whichType = canConsumeTokenImmediately.getRight();
-                    val token = new Token(whichType);
+                    final Token token;
+                    if (whichType == Token.Type.NATURAL_LITERAL) {
+                        forcedAssertion(remainingStuff.startsWith("0"));  /* XXX */
+                        token = new Token(whichType, "0");  /* XXX */
+                    } else {  /* XXX */
+                        token = new Token(whichType);
+                    }  /* XXX */
                     index += Token.stringFor(token).length();
                     returning = token;
                 } else if (remainingStuff.startsWith(" ")) {
@@ -108,6 +142,7 @@ public class Scanner {
                     index += 1;
                 } else if (remainingStuff.startsWith("\n")) {
                     index += 1;
+                    /* lineFeedCharactersFound += 1; TODO */
                 } else {
                     throw new IllegalStateException("FIXME");
                 }
@@ -119,6 +154,7 @@ public class Scanner {
         return returning;
     }
 
+    @SuppressWarnings("java:S3776") /* Cognitive Complexity of methods should not be too high. */
     static Pair<Boolean, Token.Type> canConsumeTokenImmediately(
             final String stuff) {
 
@@ -138,6 +174,8 @@ public class Scanner {
             return new ImmutablePair<>(true, Token.Type.ALL);
         } else if (stuff.startsWith(Token.LC_A)) {
             return new ImmutablePair<>(true, Token.Type.A);
+        } else if (stuff.startsWith(Token.LC_BOUND)) {
+            return new ImmutablePair<>(true, Token.Type.BOUND);
         } else if (stuff.startsWith(Token.LC_COMMAND)) {
             return new ImmutablePair<>(true, Token.Type.COMMAND);
         } else if (stuff.startsWith(Token.LC_CAUSES)) {
@@ -178,10 +216,17 @@ public class Scanner {
             return new ImmutablePair<>(true, Token.Type.SO);
         } else if (stuff.startsWith(Token.LC_SIDE)) {
             return new ImmutablePair<>(true, Token.Type.SIDE);
+        } else if (stuff.startsWith(Token.LC_TO)) {
+            return new ImmutablePair<>(true, Token.Type.TO);
         } else if (stuff.startsWith(Token.LC_THEN)) {
             return new ImmutablePair<>(true, Token.Type.THEN);
         } else if (stuff.startsWith(Token.LC_THE)) {
             return new ImmutablePair<>(true, Token.Type.THE);
+        } else if (stuff.startsWith(Token.LC_WHERE)) {
+            return new ImmutablePair<>(true, Token.Type.WHERE);
+        } else if (stuff.startsWith("0")) {
+            return new ImmutablePair<>(
+                    true, Token.Type.NATURAL_LITERAL);
         }
         return new ImmutablePair<>(false, null);
     }

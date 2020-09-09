@@ -14,7 +14,7 @@ then
     # JAVA_HOME=/Library/Java/JavaVirtualMachines/jdk-11.0.7.jdk/Contents/Home/ java -cp target/pangolin-0.0.1-SNAPSHOT.jar org.minia.pangolin.App
 
     #   Would work.
-    JAVA_HOME=/Library/Java/JavaVirtualMachines/jdk-11.0.7.jdk/Contents/Home/ java -jar target/pangolin-0.0.1-SNAPSHOT-jar-with-dependencies.jar
+    JAVA_HOME=/Library/Java/JavaVirtualMachines/jdk-11.0.7.jdk/Contents/Home/ java -jar target/pangolin-0.0.1-SNAPSHOT-jar-with-dependencies.jar run app examples/0_hello_world/
 
     #   Would work as well.
     # JAVA_HOME=/Library/Java/JavaVirtualMachines/jdk-11.0.7.jdk/Contents/Home/ java -cp target/pangolin-0.0.1-SNAPSHOT-jar-with-dependencies.jar org.minia.pangolin.App

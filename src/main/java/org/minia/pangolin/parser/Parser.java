@@ -1,19 +1,25 @@
 package org.minia.pangolin.parser;
 
+import lombok.extern.java.Log;
 import lombok.val;
 import lombok.var;
-import org.apache.commons.lang3.NotImplementedException;
 import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.apache.commons.lang3.tuple.ImmutableTriple;
 import org.apache.commons.lang3.tuple.Pair;
+import org.apache.commons.lang3.tuple.Triple;
 import org.minia.pangolin.scanner.Scanner;
 import org.minia.pangolin.scanner.Token;
 import org.minia.pangolin.syntaxtree.Application;
 import org.minia.pangolin.syntaxtree.ExecutionRequest;
 import org.minia.pangolin.syntaxtree.NamedFunction;
+import org.minia.pangolin.syntaxtree.NaturalLiteralExpression;
 import org.minia.pangolin.syntaxtree.NewLineOperation;
 import org.minia.pangolin.syntaxtree.Operation;
 import org.minia.pangolin.syntaxtree.Operations;
+import org.minia.pangolin.syntaxtree.Operations.RunTimeInterleave;
 import org.minia.pangolin.syntaxtree.PrintOperation;
+import org.minia.pangolin.syntaxtree.WhereValueBinding;
+import org.minia.pangolin.syntaxtree.WhereValueBindings;
 import org.minia.pangolin.Program;
 
 import java.util.ArrayList;
@@ -22,7 +28,10 @@ import java.util.List;
 import static org.minia.pangolin.util.Util.forceAssert;
 import static org.minia.pangolin.util.Util.forcedAssertion;
 
+@Log
 public class Parser {
+
+    private static final String FIXME = "FIXME";
 
     private enum Reduction {
         NAMED_FUNCTION, APPLICATION, EXECUTION_REQUEST
@@ -36,7 +45,9 @@ public class Parser {
         this.program = program;
     }
 
-    public List<ParseTree> parse() {
+    public List<ParseTree> parse()
+            throws LanguageNotRecognizedException {
+
         forceAssert(program.getDocuments().size() == 1);
         val scanner = new Scanner(program);
         List<Token> tokens = new ArrayList<>(16);
@@ -69,10 +80,12 @@ public class Parser {
             canReduce = canReduceResults.getLeft();
             whichReduction = canReduceResults.getRight();
         }
-        throw new IllegalStateException("FIXME");
+        throw new IllegalStateException(FIXME);
     }
 
-    public Pair<Boolean, Reduction> canReduce(final List<Token> tokens) {
+    public Pair<Boolean, Reduction> canReduce(final List<Token> tokens)
+            throws LanguageNotRecognizedException {
+
         if (canReduceFunction(tokens)) {
             return new ImmutablePair<>(true, Reduction.NAMED_FUNCTION);
         }
@@ -86,7 +99,9 @@ public class Parser {
         return new ImmutablePair<>(false, null);
     }
 
-    public boolean canReduceFunction(final List<Token> tokens) {
+    @SuppressWarnings({/*"java:S1126", "java:S1134", */"java:S3776"}) /* Return of boolean expressions should not be wrapped into an "if-then-else" statement. */ /* Track uses of "FIX-ME" tags. */ /* Cognitive Complexity of methods should not be too high. */
+    public boolean canReduceFunction(final List<Token> tokens)
+            throws LanguageNotRecognizedException {
 
         val tokensSize = tokens.size();
 
@@ -105,6 +120,7 @@ public class Parser {
         if (tokenOne.notAnIdentifier()) {
             return false;
         }
+        val expectedIdentifierAtFunctionTail = tokenOne.getIdentifierName();
 
         //   Would expect `IS`.
         val tokenTwo = tokens.get(2);
@@ -256,13 +272,24 @@ public class Parser {
             nestedCallTokens.add(tokens.get(26 + i));
         }
 
-        Pair<Boolean, Short> canReduceFunctionBodyResults =
+        val canReduceFunctionBodyResults =
                 canReduceFunctionBody(nestedCallTokens);
-        boolean canReduceFunctionBody = canReduceFunctionBodyResults.getLeft();
-        if (canReduceFunctionBody)  {
-            return true;  /* FIXME: Actually, quite not. */
+        val canReduceFunctionBody = canReduceFunctionBodyResults.getLeft();
+        forceAssert(canReduceFunctionBody);
+        val discardHowManyTokensToGetToFunctionTail =
+                canReduceFunctionBodyResults.getRight();
+        val tokensAfterFunctionBody = new ArrayList<Token>(
+                nestedCallTokensSize - discardHowManyTokensToGetToFunctionTail);
+        val limit = nestedCallTokensSize
+                - discardHowManyTokensToGetToFunctionTail;
+        for (int i = 0; i < limit; i++) {
+            val i0 = i + discardHowManyTokensToGetToFunctionTail;
+            val someToken = nestedCallTokens.get(i0);
+            tokensAfterFunctionBody.add(someToken);
         }
-        return false;
+        return canReduceFunctionTail(
+                tokensAfterFunctionBody,
+                expectedIdentifierAtFunctionTail.toString());
     }
 
     /**  @param tokens A list of tokens remaining to be processed.
@@ -270,69 +297,372 @@ public class Parser {
      * reduction or not (at {@link Pair#getLeft()}) and, in case that is
      * true, how many tokens would that reduction consume (at {@link
      * Pair#getRight()}). */
-    public Pair<Boolean, Short> canReduceFunctionBody(final List<Token> tokens) {
+    public Pair<Boolean, Short> canReduceFunctionBody(
+            final List<Token> tokens) throws LanguageNotRecognizedException {
 
-        if (tokens.size() < 6) {
-            return new ImmutablePair<>(false, Short.MIN_VALUE);
+        val tokensSize = tokens.size();
+        var canReduceOperationResult = canReduceOperation(tokens);
+        var canReduceOperation = canReduceOperationResult.getLeft();
+        if (!canReduceOperation) {
+            return new ImmutablePair<>(false, null);
+        }
+        var remainingTokens = canReduceOperationResult.getRight();
+        var remainingTokensSize = remainingTokens.size();
+        var canReduceAnOperationsConnectingClauseResult =
+                canReduceAnOperationsConnectingClause(remainingTokens);
+        var canReduceAnOperationsConnectingClause =
+                canReduceAnOperationsConnectingClauseResult.getLeft();
+        val expectedRunTimeInterleave =
+                canReduceAnOperationsConnectingClauseResult.getMiddle();
+        while (canReduceAnOperationsConnectingClause) {
+            remainingTokens =
+                    canReduceAnOperationsConnectingClauseResult.getRight();
+            canReduceOperationResult = canReduceOperation(remainingTokens);
+            canReduceOperation = canReduceOperationResult.getLeft();
+            if (!canReduceOperation) {
+                throw new LanguageNotRecognizedException(FIXME);
+            }
+            remainingTokens = canReduceOperationResult.getRight();
+            remainingTokensSize = remainingTokens.size();
+            canReduceAnOperationsConnectingClauseResult =
+                    canReduceAnOperationsConnectingClause(remainingTokens);
+            canReduceAnOperationsConnectingClause =
+                    canReduceAnOperationsConnectingClauseResult.getLeft();
+            if (canReduceAnOperationsConnectingClause) {
+                val actualRunTimeInterleave =
+                        canReduceAnOperationsConnectingClauseResult.getMiddle();
+                forcedAssertion(expectedRunTimeInterleave ==
+                        actualRunTimeInterleave);
+            }
         }
 
-        //   Would expect `PRINT`.
-        val token0 = tokens.get(0);
-        if (token0.getType() != Token.Type.PRINT) {
-            return new ImmutablePair<>(false, Short.MIN_VALUE);
+        //   No further operations? Any `where` value binding clauses?
+
+        val canReduceWhereValueBindingClausesResult =
+                canReduceWhereValueBindingClauses(remainingTokens);
+        val canReduceWhereValueBindingClauses =
+                canReduceWhereValueBindingClausesResult.getLeft();
+        val howManyTokensInWhereValueBindingClauses =
+                canReduceWhereValueBindingClausesResult.getRight();
+        if (canReduceWhereValueBindingClauses) {
+            if (howManyTokensInWhereValueBindingClauses > 0) {
+                remainingTokens.subList(
+                        0, howManyTokensInWhereValueBindingClauses).clear();
+            }
+            remainingTokensSize = remainingTokens.size();
         }
 
-        //   Would expect `STRING_LITERAL`.
-        val token1 = tokens.get(1);
-        if (token1.getType() != Token.Type.STRING_LITERAL) {
-            return new ImmutablePair<>(false, Short.MIN_VALUE);
-        }
+        //   No [more] `where` value binding clauses? Assume the
+        // function tail is coming up next. That is, return true.
 
-        //   Would expect `AND`.
-        val token2 = tokens.get(2);
-        if (token2.getType() != Token.Type.AND) {
-            return new ImmutablePair<>(false, Short.MIN_VALUE);
-        }
-
-        //   Would expect `THEN`.
-        val token3 = tokens.get(3);
-        if (token3.getType() != Token.Type.THEN) {
-            return new ImmutablePair<>(false, Short.MIN_VALUE);
-        }
-
-        //   Would expect `NEW`.
-        val token4 = tokens.get(4);
-        if (token4.getType() != Token.Type.NEW) {
-            return new ImmutablePair<>(false, Short.MIN_VALUE);
-        }
-
-        //   Would expect `LINE`.
-        val token5 = tokens.get(5);
-        if (token5.getType() != Token.Type.LINE) {
-            return new ImmutablePair<>(false, Short.MIN_VALUE);
-        }
-
-        return new ImmutablePair<>(true, (short) 6);
+        forcedAssertion(tokensSize < Short.MAX_VALUE + 1);
+        forcedAssertion(remainingTokensSize < Short.MAX_VALUE + 1);
+        forcedAssertion(tokensSize > remainingTokensSize);
+        return new ImmutablePair<>(
+                true, (short) (tokensSize - remainingTokensSize));
     }
 
+    /**  @return A {@link Pair}; where the right holds: the remaining
+     * tokens after the first operation reduction, if an operation
+     * reduction can be performed, else `null`; and the left holds the
+     * actual result of the operation (whether an operation reduction
+     * can be performed or not. */
+    public Pair<Boolean, List<Token>> canReduceOperation(
+            final List<Token> tokens) {
+
+        val tokensSize = tokens.size();
+        if (tokensSize < 2) {
+            return new ImmutablePair<>(false, null);
+        }
+        val token0 = tokens.get(0);
+        final List<Token> remainingTokens = new ArrayList<>(tokensSize - 1);
+        for (int i = 1; i < tokensSize; i++) {
+            val someToken = tokens.get(i);
+            remainingTokens.add(someToken);
+        }
+        if (Token.Type.NEW == token0.getType()) {
+            return canReduceNewLineOperation(remainingTokens);
+        }
+        if (Token.Type.PRINT == token0.getType()) {
+            return canReducePrintOperation(remainingTokens);
+        }
+        return new ImmutablePair<>(false, null);
+    }
+
+    public Pair<Boolean, List<Token>> canReduceNewLineOperation(
+            final List<Token> tokens) {
+
+        val tokensSize = tokens.size();
+        if (tokensSize < 1) {
+            return new ImmutablePair<>(false, null);
+        }
+        val token0 = tokens.get(0);
+        final List<Token> remainingTokens = new ArrayList<>(tokensSize - 1);
+        for (int i = 1; i < tokensSize; i++) {
+            val someToken = tokens.get(i);
+            remainingTokens.add(someToken);
+        }
+        if (Token.Type.LINE == token0.getType()) {
+            return new ImmutablePair<>(true, remainingTokens);
+        }
+        return new ImmutablePair<>(false, null);
+    }
+
+    /**  <p>The `print` token has been already seen by the caller of
+     * this, this one only has to check that what comes next can be
+     * really printed. */
+    public Pair<Boolean, List<Token>> canReducePrintOperation(
+            final List<Token> tokens) {
+
+        val tokensSize = tokens.size();
+        if (tokensSize < 1) {
+            return new ImmutablePair<>(false, null);
+        }
+        val token0 = tokens.get(0);
+        final List<Token> remainingTokens = new ArrayList<>(tokensSize - 1);
+        for (int i = 1; i < tokensSize; i++) {
+            val someToken = tokens.get(i);
+            remainingTokens.add(someToken);
+        }
+        if (Token.Type.STRING_LITERAL == token0.getType()) {
+            return new ImmutablePair<>(true, remainingTokens);
+        }
+        if (Token.Type.IDENTIFIER == token0.getType()) {
+            //   Semantic analysis out of scope at this point.
+            return new ImmutablePair<>(true, remainingTokens);
+        }
+        return new ImmutablePair<>(false, null);
+    }
+
+    public Pair<Boolean, Short> canReduceWhereValueBindingClauses(
+            final List<Token> tokens) {
+
+        val canReduceWhereValueBindingClauseResult =
+                canReduceWhereValueBindingClause(tokens);
+        val canReduceWhereValueBindingClause =
+                canReduceWhereValueBindingClauseResult.getLeft();
+        if (!canReduceWhereValueBindingClause) {
+            return new ImmutablePair<>(false, Short.MIN_VALUE);
+        } else {
+            val howManyTokensInWhereValueBindingClause =
+                    canReduceWhereValueBindingClauseResult.getRight();
+            val tokensSize = tokens.size();
+            val remainingTokensTargetSize =
+                    tokensSize - howManyTokensInWhereValueBindingClause;
+            val remainingTokens =
+                    new ArrayList<Token>(remainingTokensTargetSize);
+            for (int i = 0; i < remainingTokensTargetSize; i++) {
+                val someToken =
+                        tokens.get(i + howManyTokensInWhereValueBindingClause);
+                remainingTokens.add(someToken);
+            }
+            val canReduceWhereValueBindingClausesResult =
+                    canReduceWhereValueBindingClauses(remainingTokens);
+            val canReduceWhereValueBindingClauses =
+                    canReduceWhereValueBindingClausesResult.getLeft();
+            if (canReduceWhereValueBindingClauses) {
+                val howMany = canReduceWhereValueBindingClauseResult.getRight();
+                return new ImmutablePair<>(
+                        true,
+                        (short) (howMany + howManyTokensInWhereValueBindingClause));
+            } else {
+                return new ImmutablePair<>(
+                        true, howManyTokensInWhereValueBindingClause);
+            }
+        }
+    }
+
+    public Pair<Boolean, Short> canReduceWhereValueBindingClause(
+            final List<Token> tokens) {
+
+        val tokensSize = tokens.size();
+        forcedAssertion(tokensSize > 0);
+        val token0 = tokens.get(0);
+        if (Token.Type.WHERE != token0.getType()) {
+            return new ImmutablePair<>(false, Short.MIN_VALUE);
+        }
+        // where identifier foo identifier ends is bound to [whatever]
+        // 1     2                              3  4     5  6 7 8 ...
+        forcedAssertion(tokensSize > 5);
+        val token1 = tokens.get(1);
+        forcedAssertion(Token.Type.IDENTIFIER == token1.getType());
+        val token2 = tokens.get(2);
+        forcedAssertion(Token.Type.IS == token2.getType());
+        val token3 = tokens.get(3);
+        forcedAssertion(Token.Type.BOUND == token3.getType());
+        val token4 = tokens.get(4);
+        forcedAssertion(Token.Type.TO == token4.getType());
+        val tokensToAdvanceNow = 5;
+        val remainingTokensTargetSize = tokensSize - tokensToAdvanceNow;
+        val remainingTokens = new ArrayList<Token>(remainingTokensTargetSize);
+        for (int i = 0; i < remainingTokensTargetSize; i++) {
+            val someToken = tokens.get(i + tokensToAdvanceNow);
+            remainingTokens.add(someToken);
+        }
+        val canReduceExpressionResult = canReduceExpression(remainingTokens);
+        val canReduceExpression = canReduceExpressionResult.getLeft();
+        if (canReduceExpression) {
+            val howManyTokens = canReduceExpressionResult.getRight();
+            forcedAssertion(remainingTokensTargetSize < Short.MAX_VALUE / 2);
+            return new ImmutablePair<>(true, (short) (howManyTokens + 5));
+        }
+        return new ImmutablePair<>(false, Short.MIN_VALUE);
+    }
+
+    public Pair<Boolean, Short> canReduceExpression(final List<Token> tokens) {
+
+        val tokensSize = tokens.size();
+        if (tokensSize < 1) {
+            return new ImmutablePair<>(false, Short.MIN_VALUE);
+        }
+        val token0 = tokens.get(0);
+        forcedAssertion(Token.Type.NATURAL_LITERAL == token0.getType());
+        forcedAssertion("0".contentEquals(token0.getNaturalLiteralContent()));
+        return new ImmutablePair<>(true, (short) 1);
+    }
+
+    public boolean canReduceFunctionTail(
+            final List<Token> tokens, final String expectedFunctionName) {
+
+        forcedAssertion(expectedFunctionName != null);
+        val tokensSize = tokens.size();
+        forcedAssertion(tokensSize > 1);
+        val token0 = tokens.get(0);
+        forcedAssertion(Token.Type.END == token0.getType());
+        val token1 = tokens.get(1);
+        forcedAssertion(Token.Type.FUNCTION == token1.getType());
+        val token2 = tokens.get(2);
+        forcedAssertion(Token.Type.IDENTIFIER == token2.getType());
+        val actualFunctionName = token2.getIdentifierName();
+        forcedAssertion(expectedFunctionName.equals(actualFunctionName));
+        return true;
+    }
+
+    //@SuppressWarnings({"java:S1126", "java:S1134"}) /* Return of boolean expressions should not be wrapped into an "if-then-else" statement. */ /* Track uses of "FIX-ME" tags (without the dash). */
     public boolean canReduceApplication(final List<Token> tokens) {
 
-        if (tokens.get(0).getType() == Token.Type.APPLICATION) {
-            return true;  /* FIXME Actually quite not true. */
+        val tokensSize = tokens.size();
+        // application identifier hello, world identifier ends
+        // 1           2
+        // is a command line interface application
+        // 3  4 5       6    7         8
+        // and the entry point is function identifier main identifier ends
+        // 9   10  11    12    13 14       15
+        // end application identifier hello, world identifier ends
+        // 16  17          18
+        if (tokensSize < 18) {
+            return false;
         }
-        return false;
+
+        val token0 = tokens.get(0);
+        forcedAssertion(Token.Type.APPLICATION == token0.getType());
+        val token1 = tokens.get(1);
+        forcedAssertion(Token.Type.IDENTIFIER == token1.getType());
+        val firstApplicationName = token1.getIdentifierName();
+        val token2 = tokens.get(2);
+        forcedAssertion(Token.Type.IS == token2.getType());
+        val token3 = tokens.get(3);
+        forcedAssertion(Token.Type.A == token3.getType());
+        val token4 = tokens.get(4);
+        forcedAssertion(Token.Type.COMMAND == token4.getType());
+        val token5 = tokens.get(5);
+        forcedAssertion(Token.Type.LINE == token5.getType());
+        val token6 = tokens.get(6);
+        forcedAssertion(Token.Type.INTERFACE == token6.getType());
+        val token7 = tokens.get(7);
+        forcedAssertion(Token.Type.APPLICATION == token7.getType());
+        val token8 = tokens.get(8);
+        forcedAssertion(Token.Type.AND == token8.getType());
+        val token9 = tokens.get(9);
+        forcedAssertion(Token.Type.THE == token9.getType());
+        val token10 = tokens.get(10);
+        forcedAssertion(Token.Type.ENTRY == token10.getType());
+        val token11 = tokens.get(11);
+        forcedAssertion(Token.Type.POINT == token11.getType());
+        val token12 = tokens.get(12);
+        forcedAssertion(Token.Type.IS == token12.getType());
+        val token13 = tokens.get(13);
+        forcedAssertion(Token.Type.FUNCTION == token13.getType());
+        val token14 = tokens.get(14);
+        forcedAssertion(Token.Type.IDENTIFIER == token14.getType());
+        val entryPointFunctionName = token14.getIdentifierName();
+        forceAssert(entryPointFunctionName != null);
+        val token15 = tokens.get(15);
+        forcedAssertion(Token.Type.END == token15.getType());
+        val token16 = tokens.get(16);
+        forcedAssertion(Token.Type.APPLICATION == token16.getType());
+        val token17 = tokens.get(17);
+        forcedAssertion(Token.Type.IDENTIFIER == token17.getType());
+        val secondApplicationName = token17.getIdentifierName();
+        forcedAssertion(firstApplicationName.equals(secondApplicationName));
+        return true;
     }
 
+    /**  <p>Expects either `and OPERATION [...]` or `and then
+     * OPERATION` */
+    public Triple<Boolean, Operations.RunTimeInterleave, List<Token>>
+    canReduceAnOperationsConnectingClause(final List<Token> tokens) {
+
+        val tokensSize = tokens.size();
+        forcedAssertion(tokensSize > 0);
+        val token0 = tokens.get(0);
+        if (Token.Type.AND != token0.getType()) {
+            return new ImmutableTriple<>(false, null, null);
+        }
+        forcedAssertion(tokensSize > 1);
+        val token1 = tokens.get(1);
+        final List<Token> remainingTokens;
+        if (Token.Type.THEN == token1.getType()) {
+            remainingTokens = new ArrayList<>(tokensSize - 2);
+            for (int i = 0; i < tokensSize - 2; i++) {
+                val someToken = tokens.get(i + 2);
+                remainingTokens.add(someToken);
+            }
+            return new ImmutableTriple<>(
+                    true, Operations.RunTimeInterleave.SEQUENTIAL,
+                    remainingTokens);
+        } else {
+            remainingTokens = new ArrayList<>(tokensSize - 1);
+            for (int i = 0; i < tokensSize - 1; i++) {
+                val someToken = tokens.get(i + 1);
+                remainingTokens.add(someToken);
+            }
+            return new ImmutableTriple<>(
+                    true, Operations.RunTimeInterleave.PARALLEL,
+                    remainingTokens);
+        }
+    }
+
+    //@SuppressWarnings({"java:S1126", "java:S1134"}) /* Return of boolean expressions should not be wrapped into an "if-then-else" statement. */ /* Track uses of "FIX-ME" tags (without the dash). */
     public boolean canReduceExecutionRequest(final List<Token> tokens) {
 
-        if (tokens.get(0).getType() == Token.Type.RUN) {
-            return true;  /* FIXME Actually quite not true. */
+        val tokensSize = tokens.size();
+        // run command line interface application
+        // 1   2       3    4         5
+        // identifier hello, world identifier ends
+        // 6
+        if (tokensSize < 6) {
+            return false;
         }
-        return false;
+
+        val token0 = tokens.get(0);
+        forcedAssertion(Token.Type.RUN == token0.getType());
+        val token1 = tokens.get(1);
+        forcedAssertion(Token.Type.COMMAND == token1.getType());
+        val token2 = tokens.get(2);
+        forcedAssertion(Token.Type.LINE == token2.getType());
+        val token3 = tokens.get(3);
+        forcedAssertion(Token.Type.INTERFACE == token3.getType());
+        val token4 = tokens.get(4);
+        forcedAssertion(Token.Type.APPLICATION == token4.getType());
+        val token5 = tokens.get(5);
+        forcedAssertion(Token.Type.IDENTIFIER == token5.getType());
+        return true;
     }
 
     public Pair<ParseTree, List<Token>> reduce(
-            final List<Token> tokens, final Reduction reduction) {
+            final List<Token> tokens, final Reduction reduction)
+                    throws LanguageNotRecognizedException {
 
         if (reduction == Reduction.NAMED_FUNCTION) {
 
@@ -359,7 +689,7 @@ public class Parser {
     }
 
     public Pair<NamedFunction, List<Token>> reduceFunction(
-            final List<Token> tokens) {
+            final List<Token> tokens) throws LanguageNotRecognizedException {
 
         val tokensAfterFunctionHeadReduction =
                 reduceFunctionHeadBeginning(tokens);
@@ -508,41 +838,301 @@ public class Parser {
         return returning;
     }
 
-    public Pair<Operations, List<Token>> reduceFunctionBodyClause(
+    public
+    Triple<Operations, WhereValueBindings, List<Token>>
+    reduceFunctionBodyClause(final List<Token> tokens)
+            throws LanguageNotRecognizedException {
+
+        val reduceOperationsResult = reduceOperations(tokens);
+        val operationsReduced = reduceOperationsResult.getLeft();
+        val remainingTokensAfterOperationsReduction =
+                reduceOperationsResult.getRight();
+        val tryReduceWhereValueBindingsResult = tryReduceWhereValueBindings(
+                remainingTokensAfterOperationsReduction);
+        val reducedWhereValueBindings =
+                tryReduceWhereValueBindingsResult.getLeft();
+        final WhereValueBindings whereValueBindings;
+        final List<Token> remainingTokensAfterFunctionBody;
+        if (reducedWhereValueBindings) {
+            whereValueBindings = tryReduceWhereValueBindingsResult.getMiddle();
+            remainingTokensAfterFunctionBody =
+                    tryReduceWhereValueBindingsResult.getRight();
+        } else {
+            whereValueBindings = null;
+            remainingTokensAfterFunctionBody =
+                    remainingTokensAfterOperationsReduction;
+        }
+        return new ImmutableTriple<>(
+                operationsReduced, whereValueBindings,
+                remainingTokensAfterFunctionBody);
+    }
+
+    public Pair<Operations, List<Token>> reduceOperations(
+            final List<Token> tokens) throws LanguageNotRecognizedException {
+
+        val operations = new ArrayList<Operation>(4 /* Just a random guess. */);
+        var operationReductionResult = reduceOperation(tokens);
+        var operation = operationReductionResult.getLeft();
+        var remainingTokens = operationReductionResult.getRight();
+        Triple<Boolean, List<Token>, RunTimeInterleave>
+        tryReduceOperationsConnectiveResult;
+        try {
+            tryReduceOperationsConnectiveResult = tryReduceOperationsConnective(
+                    remainingTokens, RunTimeInterleave.UNKNOWN);
+        } catch (final LanguageNotRecognizedException lnre) {
+            /* XXX never entered here! this block can only be entered when not passing an unknown run time interleave. */
+            log.severe(lnre.toString());
+            throw lnre;
+        }
+        var connectiveFoundAndReduced =
+                tryReduceOperationsConnectiveResult.getLeft();
+        final RunTimeInterleave runTimeInterleave;
+        if (connectiveFoundAndReduced) {
+            operations.add(operation);
+            runTimeInterleave =
+                    tryReduceOperationsConnectiveResult.getRight();
+            remainingTokens = tryReduceOperationsConnectiveResult.getMiddle();
+        } else {
+            return new ImmutablePair<>(
+                    Operations.single(operation), remainingTokens);
+        }
+
+        do {
+            operationReductionResult = reduceOperation(remainingTokens);
+            operation = operationReductionResult.getLeft();
+            operations.add(operation);
+            remainingTokens = operationReductionResult.getRight();
+            try {
+                tryReduceOperationsConnectiveResult =
+                        tryReduceOperationsConnective(
+                                remainingTokens, runTimeInterleave);
+            } catch (final LanguageNotRecognizedException lnre) {
+                log.severe(lnre.toString());
+                throw lnre;
+            }
+            connectiveFoundAndReduced =
+                    tryReduceOperationsConnectiveResult.getLeft();
+            if (connectiveFoundAndReduced) {
+                remainingTokens = tryReduceOperationsConnectiveResult.getMiddle();
+            } else {
+                if (runTimeInterleave == RunTimeInterleave.PARALLEL) {
+                    return new ImmutablePair<>(
+                            Operations.parallel(operations), remainingTokens);
+                } else {
+                    forcedAssertion(
+                            runTimeInterleave == RunTimeInterleave.SEQUENTIAL);
+                    return new ImmutablePair<>(
+                            Operations.sequential(operations), remainingTokens);
+                }
+            }
+        } while (!remainingTokens.isEmpty());
+
+        throw new IllegalStateException("illegal state reached?");
+    }
+
+    public Pair<Operation, List<Token>> reduceOperation(
             final List<Token> tokens) {
 
         val tokensSize = tokens.size();
-        forcedAssertion(tokensSize > 6);
-
+        forcedAssertion(tokensSize > 0);
         val token0 = tokens.get(0);
-        forcedAssertion(token0.getType() == Token.Type.PRINT);
+        if (Token.Type.PRINT == token0.getType()) {
+            return reducePrintOperation(tokens);
+        } else {
+            forcedAssertion(Token.Type.NEW == token0.getType());
+            return reduceNewLineOperation(tokens);
+        }
+    }
+
+    public Pair<Operation, List<Token>> reducePrintOperation(
+            final List<Token> tokens) {
+
+        val tokensSize = tokens.size();
+        forcedAssertion(tokensSize > 1);
+        val token0 = tokens.get(0);
+        forcedAssertion(Token.Type.PRINT == token0.getType());
         val token1 = tokens.get(1);
-        forcedAssertion(token1.getType() == Token.Type.STRING_LITERAL);
-        val operation0 = new PrintOperation(token1);
 
-        val token2 = tokens.get(2);
-        forcedAssertion(token2.getType() == Token.Type.AND);
-        val token3 = tokens.get(3);
-        forcedAssertion(token3.getType() == Token.Type.THEN);
-
-        val token4 = tokens.get(4);
-        forcedAssertion(token4.getType() == Token.Type.NEW);
-        val token5 = tokens.get(5);
-        forcedAssertion(token5.getType() == Token.Type.LINE);
-        val operation1 = new NewLineOperation();
-
-        val operations = new ArrayList<Operation>(2);
-        operations.add(operation0);
-        operations.add(operation1);
-
-        val returningLeft = Operations.sequential(operations);
-
-        final List<Token> returningRight = new ArrayList<>(tokensSize - 6);
-        for (int i = 0; i < tokensSize - 6; i++) {
-            returningRight.add(tokens.get(i + 6));
+        if (Token.Type.IDENTIFIER == token1.getType()) {
+            forcedAssertion(Token.Type.IDENTIFIER == token1.getType());
+        } else {
+            forcedAssertion(Token.Type.STRING_LITERAL == token1.getType());
         }
 
-        return new ImmutablePair<>(returningLeft, returningRight);
+        final Operation operation = new PrintOperation(token1);
+        final List<Token> remainingTokens = new ArrayList<>(tokensSize - 2);
+        for (int i = 0; i < tokensSize - 2; i++) {
+            val someToken = tokens.get(i + 2);
+            remainingTokens.add(someToken);
+        }
+        return new ImmutablePair<>(operation, remainingTokens);
+    }
+
+    public Pair<Operation, List<Token>> reduceNewLineOperation(
+            final List<Token> tokens) {
+
+        val tokensSize = tokens.size();
+        forcedAssertion(tokensSize > 1);
+        val token0 = tokens.get(0);
+        forcedAssertion(Token.Type.NEW == token0.getType());
+        val token1 = tokens.get(1);
+        forcedAssertion(Token.Type.LINE == token1.getType());
+
+        final Operation operation = new NewLineOperation();
+        final List<Token> remainingTokens = new ArrayList<>(tokensSize - 2);
+        for (int i = 0; i < tokensSize - 2; i++) {
+            val someToken = tokens.get(i + 2);
+            remainingTokens.add(someToken);
+        }
+        return new ImmutablePair<>(operation, remainingTokens);
+    }
+
+    public
+    Triple<Boolean, List<Token>, RunTimeInterleave>
+    tryReduceOperationsConnective(
+            final List<Token> tokens,
+            final RunTimeInterleave expectedRunTimeInterleave)
+                    throws LanguageNotRecognizedException {
+
+        final boolean anyInterleavingWillDo =
+                RunTimeInterleave.UNKNOWN == expectedRunTimeInterleave;
+
+        val tokensSize = tokens.size();
+        forcedAssertion(tokensSize > 1);
+        val token0 = tokens.get(0);
+        if (Token.Type.AND != token0.getType()) {
+            return new ImmutableTriple<>(
+                    false, tokens, expectedRunTimeInterleave);
+        }
+        forcedAssertion(Token.Type.AND == token0.getType());
+        if (anyInterleavingWillDo) {
+            return tryReduceOperationsConnectiveAnyInterleavingWillDo(tokens);
+        }
+
+        val token1 = tokens.get(1);
+        if (Token.Type.THEN == token1.getType()) {
+            return tryReduceOperationsSequentialConnective(
+                    tokens, expectedRunTimeInterleave);
+        } else {
+            if (RunTimeInterleave.PARALLEL == expectedRunTimeInterleave) {
+                final List<Token> remainingTokens =
+                        new ArrayList<>(tokensSize - 1);
+                for (int i = 0; i < tokensSize - 1; i++) {
+                    val someToken = tokens.get(i + 1);
+                    remainingTokens.add(someToken);
+                }
+                return new ImmutableTriple<>(true, remainingTokens, null);
+            } else {
+                throw new LanguageNotRecognizedException(FIXME);
+            }
+        }
+    }
+
+    public
+    Triple<Boolean, List<Token>, RunTimeInterleave>
+    tryReduceOperationsConnectiveAnyInterleavingWillDo(
+            final List<Token> tokens) {
+
+        val tokensSize = tokens.size();
+        forcedAssertion(tokensSize > 1);
+        val token1 = tokens.get(1);
+        if (Token.Type.THEN == token1.getType()) {
+            final List<Token> remainingTokens =
+                    new ArrayList<>(tokensSize - 2);
+            for (int i = 0; i < tokensSize - 2; i++) {
+                val someToken = tokens.get(i + 2);
+                remainingTokens.add(someToken);
+            }
+            return new ImmutableTriple<>(
+                    true, remainingTokens, RunTimeInterleave.SEQUENTIAL);
+        } else {
+            final List<Token> remainingTokens =
+                    new ArrayList<>(tokensSize - 1);
+            for (int i = 0; i < tokensSize - 1; i++) {
+                val someToken = tokens.get(i + 1);
+                remainingTokens.add(someToken);
+            }
+            return new ImmutableTriple<>(
+                    true, remainingTokens, RunTimeInterleave.PARALLEL);
+        }
+    }
+
+    public
+    Triple<Boolean, List<Token>, RunTimeInterleave>
+    tryReduceOperationsSequentialConnective(
+            final List<Token> tokens,
+            final RunTimeInterleave expectedRunTimeInterleave)
+                    throws LanguageNotRecognizedException {
+
+        val tokensSize = tokens.size();
+        if (RunTimeInterleave.SEQUENTIAL == expectedRunTimeInterleave) {
+            final List<Token> remainingTokens =
+                    new ArrayList<>(tokensSize - 2);
+            for (int i = 0; i < tokensSize - 2; i++) {
+                val someToken = tokens.get(i + 2);
+                remainingTokens.add(someToken);
+            }
+            return new ImmutableTriple<>(true, remainingTokens, null);
+        } else {
+            throw new LanguageNotRecognizedException(FIXME);
+        }
+    }
+
+    public
+    Triple<Boolean, WhereValueBindings, List<Token>>
+    tryReduceWhereValueBindings(final List<Token> tokens) {
+
+        boolean whereValueBindingFound;
+        var remainingTokens = tokens;
+        val whereValueBindings =
+                new ArrayList<WhereValueBinding>(4 /* Maybe more than 4... */);
+        WhereValueBinding whereValueBinding;
+        do {
+            Triple<Boolean, WhereValueBinding, List<Token>>
+            tryReduceWhereValueBindingResult =
+                    tryReduceWhereValueBinding(remainingTokens);
+            whereValueBindingFound = tryReduceWhereValueBindingResult.getLeft();
+            whereValueBinding = tryReduceWhereValueBindingResult.getMiddle();
+            whereValueBindings.add(whereValueBinding);
+            remainingTokens = tryReduceWhereValueBindingResult.getRight();
+        } while (whereValueBindingFound);
+        return new ImmutableTriple<>(
+                true, new WhereValueBindings(whereValueBindings),
+                remainingTokens);
+    }
+
+    public
+    Triple<Boolean, WhereValueBinding, List<Token>>
+    tryReduceWhereValueBinding(final List<Token> tokens) {
+
+        val tokensSize = tokens.size();
+        forcedAssertion(tokensSize > 1);
+        val token0 = tokens.get(0);
+        if (Token.Type.WHERE != token0.getType()) {
+            return new ImmutableTriple<>(false, null, tokens);
+        }
+        forcedAssertion(Token.Type.WHERE == token0.getType());
+        val token1 = tokens.get(1);
+        forcedAssertion(Token.Type.IDENTIFIER == token1.getType());
+        val token2 = tokens.get(2);
+        forcedAssertion(Token.Type.IS == token2.getType());
+        val token3 = tokens.get(3);
+        forcedAssertion(Token.Type.BOUND == token3.getType());
+        val token4 = tokens.get(4);
+        forcedAssertion(Token.Type.TO == token4.getType());
+        val token5 = tokens.get(5);
+        forcedAssertion(Token.Type.NATURAL_LITERAL == token5.getType());  /* XXX */
+        final List<Token> remainingTokens = new ArrayList<>(tokensSize - 6);
+        for (int i = 0; i < tokensSize - 6; i++) {
+            val someToken = tokens.get(i + 6);
+            remainingTokens.add(someToken);
+        }
+        return new ImmutableTriple<>(
+                true,
+                new WhereValueBinding(
+                        token1,
+                        NaturalLiteralExpression.fromNaturalLiteral(token5)),
+                remainingTokens);
     }
 
     public List<Token> reduceFunctionTail(
@@ -589,12 +1179,12 @@ public class Parser {
         val remainingTokensAfterApplicationReduction =
                 reduceApplicationTailResults.getRight();
         val expectedApplicationNameSecondPosition =
-                reduceApplicationEntryPointClauseResults.getLeft();
+                reduceApplicationTailResults.getLeft();
         val expectedApplicationNameSecondPositionCharSequence =
                 expectedApplicationNameSecondPosition.getIdentifierName();
         forcedAssertion(
-                expectedApplicationNameTokenFirstPositionCharSequence ==
-                        expectedApplicationNameSecondPositionCharSequence);
+                expectedApplicationNameTokenFirstPositionCharSequence.equals(
+                        expectedApplicationNameSecondPositionCharSequence));
         val applicationName =
                 expectedApplicationNameTokenFirstPositionCharSequence;
         return new ImmutablePair<>(

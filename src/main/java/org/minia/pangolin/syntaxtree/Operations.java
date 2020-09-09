@@ -1,5 +1,9 @@
 package org.minia.pangolin.syntaxtree;
 
+import lombok.Getter;
+import lombok.val;
+
+import java.util.ArrayList;
 import java.util.List;
 
 /**  <p>A {@link List} of {@link Operation}s, however the class is
@@ -7,11 +11,27 @@ import java.util.List;
  * sequential execution. */
 public class Operations {
 
-    private enum RunTimeInterleave { PARALLEL, SEQUENTIAL }
+    public enum RunTimeInterleave {
 
-    private final List<Operation> operations;
+        /**  <p>Operations can run in any order. */
+        PARALLEL,
 
-    private final RunTimeInterleave  runTimeInterleave;
+        /**  <p>Operations must be run in a particular order. */
+        SEQUENTIAL,
+
+        /**  <p>Don't use this. It only makes sense if only a single
+         * operation has to be run. */
+        ANY,
+
+        /**  <p>Don't use this. It only makes sense as a `null`
+         * placeholder alternative for non optional function call
+         * arguments. */
+        UNKNOWN
+    }
+
+    @Getter private final List<Operation> operations;
+
+    @Getter private final RunTimeInterleave  runTimeInterleave;
 
     /**  <p>The default constructor is private. Construct instances by
      * using either {@link #parallel(List)} or {@link
@@ -43,5 +63,18 @@ public class Operations {
             final List<Operation> operations) {
 
         return new Operations(operations, RunTimeInterleave.SEQUENTIAL);
+    }
+
+    /**  <p>The special case of a single operation isn't really
+     * sequential nor parallel... is it? */
+    public static Operations single(final Operation operation) {
+
+        val operations = new ArrayList<Operation>(1);
+        operations.add(operation);
+        return new Operations(operations, RunTimeInterleave.ANY);
+    }
+
+    public Short size() {
+        return operations == null ? 0 : (short) operations.size();
     }
 }
