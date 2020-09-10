@@ -17,7 +17,7 @@ import static org.minia.pangolin.util.Util.forcedAssertion;
 @Log
 public class App {
 
-    private static final String FIGLET_DEFAULT = "\n" +
+    private static final String FIGLET_DEFAULT = "" +
             "                               _ _       \n" +
             " _ __   __ _ _ __   __ _  ___ | (_)_ __  \n" +
             "| '_ \\ / _` | '_ \\ / _` |/ _ \\| | | '_ \\ \n" +
@@ -25,7 +25,7 @@ public class App {
             "| .__/ \\__,_|_| |_|\\__, |\\___/|_|_|_| |_|\n" +
             "|_|                |___/                 ";
 
-    private static final String FIGLET_THREEPOINT = "\n" +
+    private static final String FIGLET_THREEPOINT = "" +
             " _  _  _  _  _ |. _\n" +
             "|_)(_|| |(_|(_)||| |\n" +
             "|         _|\n";
@@ -90,9 +90,8 @@ public class App {
      * logging call. Here the standard output print is on purpose.
      *   @return A boolean `true` value, for this should not fail. */
     @SuppressWarnings("java:S106")
-    private static boolean greet() {
+    private static void greet() {
         System.out.println("Wish you have a wonderful day!");
-        return true;
     }
 
     private static boolean process(final String[] args) {
@@ -103,15 +102,25 @@ public class App {
                 return runApp(args[i + 2]);
             }
             if ("greet".equals(args[i])) {
-                return greet();
+                greet();
+                return true;
             }
         }
         return false;
     }
 
+    /**  <p>`@SuppressWarnings("java:S106")` will suppress the warning
+     * by which a standard output print is adviced to be turned to a
+     * logging call. Here the standard output print is on purpose.
+     *   @return A boolean `true` value, for this should not fail. */
+    @SuppressWarnings("java:S106")
+    private static void printBanner() {
+        System.out.print(FIGLET_THREEPOINT);
+    }
+
     public static int fakeableMain(final String[] args) {
         if (canPrintBanner(args)) {
-            log.info(FIGLET_THREEPOINT);
+            printBanner();
         }
         if (process(args)) {
             return 0;
