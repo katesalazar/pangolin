@@ -32,11 +32,6 @@ public class Operations {
 
     private final Operations.RunTimeInterleave runTimeInterleave;
 
-    private Operations() {
-        super();
-        throw new UnsupportedOperationException("FIXME");
-    }
-
     Operations(
             final org.minia.pangolin.syntaxtree.Operations operations,
             final org.minia.pangolin.syntaxtree.WhereValueBindings whereValueBindings)

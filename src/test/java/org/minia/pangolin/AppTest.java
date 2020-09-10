@@ -9,8 +9,8 @@ import org.minia.pangolin.parser.LanguageNotRecognizedException;
 /**
  * Unit test.
  */
-public class AppTest extends TestCase
-{
+public class AppTest extends TestCase {
+
     /**
      * Create the test case
      *
@@ -87,6 +87,13 @@ public class AppTest extends TestCase
         val app = new App();
         val runAppResult =
                 app.runApp("src/main/resources/double_where_clause_and_run/");
+        assertEquals(true, runAppResult);
+    }
+
+    public void test9() throws LanguageNotRecognizedException {
+        val app = new App();
+        val runAppResult =
+                app.runApp("src/main/resources/conditional_expression/");
         assertEquals(true, runAppResult);
     }
 }

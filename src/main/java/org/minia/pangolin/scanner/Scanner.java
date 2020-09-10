@@ -11,7 +11,7 @@ import java.util.List;
 
 import static org.minia.pangolin.util.Util.forcedAssertion;
 
-public class Scanner {
+public final class Scanner {
 
     private final Program program;
 
@@ -129,8 +129,13 @@ public class Scanner {
                     val whichType = canConsumeTokenImmediately.getRight();
                     final Token token;
                     if (whichType == Token.Type.NATURAL_LITERAL) {
-                        forcedAssertion(remainingStuff.startsWith("0"));  /* XXX */
-                        token = new Token(whichType, "0");  /* XXX */
+                        if (remainingStuff.startsWith("0")) {  /* XXX */
+                            forcedAssertion(remainingStuff.startsWith("0"));  /* XXX */
+                            token = new Token(whichType, "0");  /* XXX */
+                        } else {  /* XXX */
+                            forcedAssertion(remainingStuff.startsWith("1"));  /* XXX */
+                            token = new Token(whichType, "1");  /* XXX */
+                        }  /* XXX */
                     } else {  /* XXX */
                         token = new Token(whichType);
                     }  /* XXX */
@@ -176,16 +181,24 @@ public class Scanner {
             return new ImmutablePair<>(true, Token.Type.A);
         } else if (stuff.startsWith(Token.LC_BOUND)) {
             return new ImmutablePair<>(true, Token.Type.BOUND);
+        } else if (stuff.startsWith(Token.LC_CONDITIONAL)) {
+            return new ImmutablePair<>(true, Token.Type.CONDITIONAL);
         } else if (stuff.startsWith(Token.LC_COMMAND)) {
             return new ImmutablePair<>(true, Token.Type.COMMAND);
         } else if (stuff.startsWith(Token.LC_CAUSES)) {
             return new ImmutablePair<>(true, Token.Type.CAUSES);
         } else if (stuff.startsWith(Token.LC_DOES)) {
             return new ImmutablePair<>(true, Token.Type.DOES);
+        } else if (stuff.startsWith(Token.LC_EXECUTES)) {
+            return new ImmutablePair<>(true, Token.Type.EXECUTES);
         } else if (stuff.startsWith(Token.LC_ENTRY)) {
             return new ImmutablePair<>(true, Token.Type.ENTRY);
+        } else if (stuff.startsWith(Token.LC_ENDS)) {
+            return new ImmutablePair<>(true, Token.Type.ENDS);
         } else if (stuff.startsWith(Token.LC_END)) {
             return new ImmutablePair<>(true, Token.Type.END);
+        } else if (stuff.startsWith(Token.LC_ELSE)) {
+            return new ImmutablePair<>(true, Token.Type.ELSE);
         } else if (stuff.startsWith(Token.LC_EFFECTS)) {
             return new ImmutablePair<>(true, Token.Type.EFFECTS);
         } else if (stuff.startsWith(Token.LC_FUNCTION)) {
@@ -194,10 +207,14 @@ public class Scanner {
             return new ImmutablePair<>(true, Token.Type.IT);
         } else if (stuff.startsWith(Token.LC_IS)) {
             return new ImmutablePair<>(true, Token.Type.IS);
+        } else if (stuff.startsWith(Token.LC_IF)) {
+            return new ImmutablePair<>(true, Token.Type.IF);
         } else if (stuff.startsWith(Token.LC_INTERFACE)) {
             return new ImmutablePair<>(true, Token.Type.INTERFACE);
         } else if (stuff.startsWith(Token.LC_LINE)) {
             return new ImmutablePair<>(true, Token.Type.LINE);
+        } else if (stuff.startsWith(Token.LC_LESS)) {
+            return new ImmutablePair<>(true, Token.Type.LESS);
         } else if (stuff.startsWith(Token.LC_NOTHING)) {
             return new ImmutablePair<>(true, Token.Type.NOTHING);
         } else if (stuff.startsWith(Token.LC_NEW)) {
@@ -212,19 +229,28 @@ public class Scanner {
             return new ImmutablePair<>(true, Token.Type.RECEIVES);
         } else if (stuff.startsWith(Token.LC_RUN)) {
             return new ImmutablePair<>(true, Token.Type.RUN);
+        } else if (stuff.startsWith(Token.LC_STATEMENTS)) {
+            return new ImmutablePair<>(true, Token.Type.STATEMENTS);
         } else if (stuff.startsWith(Token.LC_SO)) {
             return new ImmutablePair<>(true, Token.Type.SO);
         } else if (stuff.startsWith(Token.LC_SIDE)) {
             return new ImmutablePair<>(true, Token.Type.SIDE);
+        } else if (stuff.startsWith(Token.LC_SEQUENTIALLY)) {
+            return new ImmutablePair<>(true, Token.Type.SEQUENTIALLY);
         } else if (stuff.startsWith(Token.LC_TO)) {
             return new ImmutablePair<>(true, Token.Type.TO);
         } else if (stuff.startsWith(Token.LC_THEN)) {
             return new ImmutablePair<>(true, Token.Type.THEN);
         } else if (stuff.startsWith(Token.LC_THE)) {
             return new ImmutablePair<>(true, Token.Type.THE);
+        } else if (stuff.startsWith(Token.LC_THAN)) {
+            return new ImmutablePair<>(true, Token.Type.THAN);
         } else if (stuff.startsWith(Token.LC_WHERE)) {
             return new ImmutablePair<>(true, Token.Type.WHERE);
         } else if (stuff.startsWith("0")) {
+            return new ImmutablePair<>(
+                    true, Token.Type.NATURAL_LITERAL);
+        } else if (stuff.startsWith("1")) {
             return new ImmutablePair<>(
                     true, Token.Type.NATURAL_LITERAL);
         }

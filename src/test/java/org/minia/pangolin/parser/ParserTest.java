@@ -216,6 +216,7 @@ public class ParserTest extends TestCase
                         " and receives nothing at all" +
                         " and returns nothing at all" +
                         " so it causes side effects" +
+                        " and executes statements sequentially" +
                         " and does" +
                         " print" +
                         " string literal hello, world string literal ends" +

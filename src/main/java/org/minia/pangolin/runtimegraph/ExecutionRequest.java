@@ -24,8 +24,9 @@ public class ExecutionRequest {
                     throws LanguageNotRecognizedException {
 
         for (final Application application: applications) {
-            if (application.getName().equals(
-                    executionRequest.getApplicationRequestedToBeExecutedName())) {
+            if (application != null && application.getName() != null &&
+                    application.getName().equals(
+                            executionRequest.getApplicationRequestedToBeExecutedName())) {
                 return new ExecutionRequest(application);
             }
         }

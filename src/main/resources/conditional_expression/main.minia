@@ -1,5 +1,5 @@
 comment
-        Copyright 2018-2020 Mercedes Catherine Salazar
+        Copyright 2019, 2020 Mercedes Catherine Salazar
 
         Licensed under the Apache License, Version 2.0 (the "License");
         you may not use this file except in compliance with the License.
@@ -14,7 +14,9 @@ comment
         See the License for the specific language governing permissions
         and limitations under the License.
 
-        examples/0_hello_world/main.minia: "hello, world" program.
+        res/tst/conditional_expression/main.minia: Test demonstrating
+        parse of a (less than) conditional expression as the value of a
+        `where` value bind.
 comment ends
 
 function identifier main identifier ends
@@ -24,13 +26,10 @@ function identifier main identifier ends
 	so it causes side effects
 	and executes statements sequentially
 	and does
-	print string literal hello, world string literal ends
+	print identifier something else identifier ends
 	and then new line
+	where
+		identifier something else identifier ends
+		is bound to
+		conditional if 0 is less than 1 then 0 else 1 conditional ends
 end function identifier main identifier ends
-
-application identifier hello, world identifier ends
-	is a command line interface application
-	and the entry point is function identifier main identifier ends
-end application identifier hello, world identifier ends
-
-run command line interface application identifier hello, world identifier ends

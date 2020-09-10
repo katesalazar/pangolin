@@ -10,8 +10,12 @@ import org.apache.commons.lang3.tuple.Triple;
 import org.minia.pangolin.scanner.Scanner;
 import org.minia.pangolin.scanner.Token;
 import org.minia.pangolin.syntaxtree.Application;
+import org.minia.pangolin.syntaxtree.Condition;
+import org.minia.pangolin.syntaxtree.ConditionalExpression;
 import org.minia.pangolin.syntaxtree.ExecutionRequest;
+import org.minia.pangolin.syntaxtree.Expression;
 import org.minia.pangolin.syntaxtree.IdentifierExpression;
+import org.minia.pangolin.syntaxtree.LessThanCondition;
 import org.minia.pangolin.syntaxtree.NamedFunction;
 import org.minia.pangolin.syntaxtree.NaturalLiteralExpression;
 import org.minia.pangolin.syntaxtree.NewLineOperation;
@@ -29,8 +33,7 @@ import java.util.List;
 import static org.minia.pangolin.util.Util.forceAssert;
 import static org.minia.pangolin.util.Util.forcedAssertion;
 
-@Log
-public class Parser {
+@Log public final class Parser {
 
     private static final String FIXME = "FIXME";
 
@@ -261,16 +264,40 @@ public class Parser {
             return false;
         }
 
-        //   Would expect `DOES`.
+        //   Would expect `EXECUTES`.
         val token25 = tokens.get(25);
-        if (token25.getType() != Token.Type.DOES) {
+        if (token25.getType() != Token.Type.EXECUTES) {
             return false;
         }
 
-        val nestedCallTokensSize = tokensSize - 26;
+        //   Would expect `STATEMENTS`.
+        val token26 = tokens.get(26);
+        if (token26.getType() != Token.Type.STATEMENTS) {
+            return false;
+        }
+
+        //   Would expect `SEQUENTIALLY`.
+        val token27 = tokens.get(27);
+        if (token27.getType() != Token.Type.SEQUENTIALLY) {
+            return false;
+        }
+
+        //   Would expect `AND`.
+        val token28 = tokens.get(28);
+        if (token28.getType() != Token.Type.AND) {
+            return false;
+        }
+
+        //   Would expect `DOES`.
+        val token29 = tokens.get(29);
+        if (token29.getType() != Token.Type.DOES) {
+            return false;
+        }
+
+        val nestedCallTokensSize = tokensSize - 30;
         List<Token> nestedCallTokens = new ArrayList<>(nestedCallTokensSize);
         for (int i = 0; i < nestedCallTokensSize; i++) {
-            nestedCallTokens.add(tokens.get(26 + i));
+            nestedCallTokens.add(tokens.get(30 + i));
         }
 
         val canReduceFunctionBodyResults =
@@ -519,10 +546,69 @@ public class Parser {
         val token0 = tokens.get(0);
         if (Token.Type.NATURAL_LITERAL == token0.getType()) {  /* XXX replace for expression detection */
             forcedAssertion(Token.Type.NATURAL_LITERAL == token0.getType());  /* XXX replace for expression detection */
-        } else {  /* XXX replace for expression detection */
+        } else if (Token.Type.IDENTIFIER == token0.getType()) {  /* XXX replace for expression detection */
             forcedAssertion(Token.Type.IDENTIFIER == token0.getType());  /* XXX replace for expression detection */
+        } else {  /* XXX replace for expression detection */
+            forcedAssertion(Token.Type.CONDITIONAL == token0.getType());  /* XXX replace for expression detection */
+            val canReduceConditionalExpressionResult =  /* XXX replace for expression detection */
+                    canReduceConditionalExpression(tokens);  /* XXX replace for expression detection */
+            if (canReduceConditionalExpressionResult.getLeft()) {  /* XXX replace for expression detection */
+                return canReduceConditionalExpressionResult;  /* XXX replace for expression detection */
+            }  /* XXX replace for expression detection */
         }  /* XXX replace for expression detection */
         return new ImmutablePair<>(true, (short) 1);
+    }
+
+    public Pair<Boolean, Short> canReduceConditionalExpression(
+            final List<Token> tokens) {
+
+        val tokensSize = tokens.size();
+        if (tokensSize < 13) {
+            return new ImmutablePair<>(false, (short) 0);
+        }
+
+        val token0 = tokens.get(0);
+        if (Token.Type.CONDITIONAL != token0.getType()) {
+            return new ImmutablePair<>(false, (short) 0);
+        }
+
+        val token1 = tokens.get(1);
+        forceAssert(Token.Type.IF == token1.getType());
+
+        val token2 = tokens.get(2);
+        forceAssert(Token.Type.NATURAL_LITERAL == token2.getType());
+
+        val token3 = tokens.get(3);
+        forceAssert(Token.Type.IS == token3.getType());
+
+        val token4 = tokens.get(4);
+        forceAssert(Token.Type.LESS == token4.getType());
+
+        val token5 = tokens.get(5);
+        forceAssert(Token.Type.THAN == token5.getType());
+
+        val token6 = tokens.get(6);
+        forceAssert(Token.Type.NATURAL_LITERAL == token6.getType());
+
+        val token7 = tokens.get(7);
+        forceAssert(Token.Type.THEN == token7.getType());
+
+        val token8 = tokens.get(8);
+        forceAssert(Token.Type.NATURAL_LITERAL == token8.getType());
+
+        val token9 = tokens.get(9);
+        forceAssert(Token.Type.ELSE == token9.getType());
+
+        val token10 = tokens.get(10);
+        forceAssert(Token.Type.NATURAL_LITERAL == token10.getType());
+
+        val token11 = tokens.get(11);
+        forceAssert(Token.Type.CONDITIONAL == token11.getType());
+
+        val token12 = tokens.get(12);
+        forceAssert(Token.Type.ENDS == token12.getType());
+
+        return new ImmutablePair<>(true, (short) 13);
     }
 
     public boolean canReduceFunctionTail(
@@ -708,8 +794,10 @@ public class Parser {
         val tokensAfterSideEffectsClauseReduction =
                 reduceFunctionSideEffectsClause(
                         tokensAfterReturnsClauseReduction);
-        val tokensAfterAndDoesClauseReduction = reduceFunctionAndDoesClause(
+        val tokensAfterInterleavingModeClause = reduceInterleavingModeClause(
                 tokensAfterSideEffectsClauseReduction);
+        val tokensAfterAndDoesClauseReduction = reduceFunctionAndDoesClause(
+                tokensAfterInterleavingModeClause);
         val reduceFunctionBodyClauseReturnedPair = reduceFunctionBodyClause(
                 tokensAfterAndDoesClauseReduction);
         val functionOperations =
@@ -825,6 +913,26 @@ public class Parser {
         final List<Token> returning = new ArrayList<>(tokensSize - 5);
         for (int i = 0; i < tokensSize - 5; i++) {
             returning.add(tokens.get(i + 5));
+        }
+        return returning;
+    }
+
+    public List<Token> reduceInterleavingModeClause(
+            final List<Token> tokens) {
+
+        val tokensSize = tokens.size();
+        forcedAssertion(tokensSize > 4);
+        val token0 = tokens.get(0);
+        forcedAssertion(token0.getType() == Token.Type.AND);
+        val token1 = tokens.get(1);
+        forcedAssertion(token1.getType() == Token.Type.EXECUTES);
+        val token2 = tokens.get(2);
+        forcedAssertion(token2.getType() == Token.Type.STATEMENTS);
+        val token3 = tokens.get(3);
+        forcedAssertion(token3.getType() == Token.Type.SEQUENTIALLY);
+        final List<Token> returning = new ArrayList<>(tokensSize - 4);
+        for (int i = 0; i < tokensSize - 4; i++) {
+            returning.add(tokens.get(i + 4));
         }
         return returning;
     }
@@ -1117,7 +1225,6 @@ public class Parser {
         if (Token.Type.WHERE != token0.getType()) {
             return new ImmutableTriple<>(false, null, tokens);
         }
-        forcedAssertion(Token.Type.WHERE == token0.getType());
         val token1 = tokens.get(1);
         forcedAssertion(Token.Type.IDENTIFIER == token1.getType());
         val token2 = tokens.get(2);
@@ -1126,34 +1233,151 @@ public class Parser {
         forcedAssertion(Token.Type.BOUND == token3.getType());
         val token4 = tokens.get(4);
         forcedAssertion(Token.Type.TO == token4.getType());
-        val token5 = tokens.get(5);
-        if (Token.Type.NATURAL_LITERAL == token5.getType()) {  /* XXX replace for expression detection */
-            forcedAssertion(Token.Type.NATURAL_LITERAL == token5.getType());  /* XXX replace for expression detection */
-        } else {  /* XXX replace for expression detection */
-            forcedAssertion(Token.Type.IDENTIFIER == token5.getType());  /* XXX replace for expression detection */
-        }  /* XXX replace for expression detection */
-        final List<Token> remainingTokens = new ArrayList<>(tokensSize - 6);
-        for (int i = 0; i < tokensSize - 6; i++) {
-            val someToken = tokens.get(i + 6);
+        val tokensForExpression = new ArrayList<Token>(tokensSize - 5);
+        for (int i = 0; i < tokensSize - 5; i++) {
+            val someToken = tokens.get(i + 5);
+            tokensForExpression.add(someToken);
+        }
+        val tryReduceExpressionResult =
+                tryReduceExpression(tokensForExpression);
+        forceAssert(tryReduceExpressionResult.getLeft());
+        return new ImmutableTriple<>(
+                true,
+                new WhereValueBinding(
+                        token1, tryReduceExpressionResult.getMiddle()),
+                tryReduceExpressionResult.getRight());
+    }
+
+    @SuppressWarnings({"java:S1452"})  // Remove generic wildcard type.
+    public
+    Triple<Boolean, ? extends Expression, ? extends List<Token>>
+    tryReduceExpression(final List<Token> tokens) {
+
+        val tokensSize = tokens.size();
+        forceAssert(tokensSize > 0);
+        val token0 = tokens.get(0);
+        if (Token.Type.NATURAL_LITERAL == token0.getType()) {
+            val remainingTokens = new ArrayList<Token>(tokensSize - 1);
+            for (int i = 0; i < tokensSize - 1; i++) {
+                val someToken = tokens.get(i + 1);
+                remainingTokens.add(someToken);
+            }
+            return new ImmutableTriple<>(
+                    true,
+                    NaturalLiteralExpression.fromNaturalLiteralToken(token0),
+                    remainingTokens);
+        }
+        if (Token.Type.IDENTIFIER == token0.getType()) {
+            val remainingTokens = new ArrayList<Token>(tokensSize - 1);
+            for (int i = 0; i < tokensSize - 1; i++) {
+                val someToken = tokens.get(i + 1);
+                remainingTokens.add(someToken);
+            }
+            return new ImmutableTriple<>(
+                    true, IdentifierExpression.fromIdentifierToken(token0),
+                    remainingTokens);
+        }
+        forceAssert(Token.Type.CONDITIONAL == token0.getType());
+        forceAssert(tokensSize > 8);
+        return tryReduceConditionalExpression(tokens);
+    }
+
+    @SuppressWarnings({"java:S1452"})  // Remove generic wildcard type.
+    public
+    Triple<Boolean, ConditionalExpression, ? extends List<Token>>
+    tryReduceConditionalExpression(final List<Token> tokens) {
+
+        val tokensSize = tokens.size();
+        forceAssert(tokensSize > 12);  // XXX
+        val token0 = tokens.get(0);
+        forceAssert(Token.Type.CONDITIONAL == token0.getType());
+        val token1 = tokens.get(1);
+        forceAssert(Token.Type.IF == token1.getType());
+        val tokensForCondition = new ArrayList<Token>(tokensSize - 2);
+        for (int i = 0; i < tokensSize - 2; i++) {
+            val someToken = tokens.get(i + 2);
+            tokensForCondition.add(someToken);
+        }
+        val tryReduceConditionResult = tryReduceCondition(tokensForCondition);
+        forceAssert(tryReduceConditionResult.getLeft());
+        val condition = tryReduceConditionResult.getMiddle();
+        val tokensAfterCondition = tryReduceConditionResult.getRight();
+        val tokensAfterConditionSize = tokensAfterCondition.size();
+        forceAssert(tokensAfterConditionSize > 1);
+        val firstTokenAfterCondition = tokensAfterCondition.get(0);
+        forceAssert(Token.Type.THEN == firstTokenAfterCondition.getType());
+        val tokensForExpressionThen =
+                new ArrayList<Token>(tokensAfterConditionSize - 1);
+        for (int i = 0; i < tokensAfterConditionSize - 1; i++) {
+            val someToken = tokensAfterCondition.get(i + 1);
+            tokensForExpressionThen.add(someToken);
+        }
+        val tryReduceExpressionThenResult =
+                tryReduceExpression(tokensForExpressionThen);
+        forceAssert(tryReduceExpressionThenResult.getLeft());
+        val expressionThen = tryReduceExpressionThenResult.getMiddle();
+        val tokensAfterExpressionThen =
+                tryReduceExpressionThenResult.getRight();
+        val tokensAfterExpressionThenSize = tokensAfterExpressionThen.size();
+        forceAssert(tokensAfterExpressionThenSize > 3);
+        val firstTokenAfterExpressionThen = tokensAfterExpressionThen.get(0);
+        forceAssert(Token.Type.ELSE == firstTokenAfterExpressionThen.getType());
+        val tokensForExpressionElse =
+                new ArrayList<Token>(tokensAfterExpressionThenSize - 1);
+        for (int i = 0; i < tokensAfterExpressionThenSize - 1; i++) {
+            val someToken = tokensAfterExpressionThen.get(i + 1);
+            tokensForExpressionElse.add(someToken);
+        }
+        val tryReduceExpressionElseResult =
+                tryReduceExpression(tokensForExpressionElse);
+        forceAssert(tryReduceExpressionElseResult.getLeft());
+        val expressionElse = tryReduceExpressionElseResult.getMiddle();
+        val tokensAfterExpressionElse =
+                tryReduceExpressionElseResult.getRight();
+        val tokensAfterExpressionElseSize = tokensAfterExpressionElse.size();
+        forceAssert(tokensAfterExpressionElseSize > 1);
+        val firstTokenAfterExpressionElse = tokensAfterExpressionElse.get(0);
+        forceAssert(Token.Type.CONDITIONAL ==
+                firstTokenAfterExpressionElse.getType());
+        val secondTokenAfterExpressionElse = tokensAfterExpressionElse.get(1);
+        forceAssert(Token.Type.ENDS ==
+                secondTokenAfterExpressionElse.getType());
+        val remainingTokens =
+                new ArrayList<Token>(tokensAfterExpressionElseSize - 2);
+        for (int i = 0; i < tokensAfterExpressionElseSize - 2; i++) {
+            val someToken = tokensAfterExpressionElse.get(i + 2);
             remainingTokens.add(someToken);
         }
-        if (Token.Type.NATURAL_LITERAL == token5.getType()) {  /* XXX replace for expression detection */
-            return new ImmutableTriple<>(  /* XXX replace for expression detection */
-                    true,  /* XXX replace for expression detection */
-                    new WhereValueBinding(  /* XXX replace for expression detection */
-                            token1,  /* XXX replace for expression detection */
-                            NaturalLiteralExpression.fromNaturalLiteralToken(  /* XXX replace for expression detection */
-                                    token5)),  /* XXX replace for expression detection */
-                    remainingTokens);  /* XXX replace for expression detection */
-        } else {  /* XXX replace for expression detection */
-            forcedAssertion(Token.Type.IDENTIFIER == token5.getType());  /* XXX replace for expression detection */
-            return new ImmutableTriple<>(  /* XXX replace for expression detection */
-                    true,  /* XXX replace for expression detection */
-                    new WhereValueBinding(  /* XXX replace for expression detection */
-                            token1,  /* XXX replace for expression detection */
-                            IdentifierExpression.fromIdentifierToken(token5)),  /* XXX replace for expression detection */
-                    remainingTokens);  /* XXX replace for expression detection */
-        }  /* XXX replace for expression detection */
+        return new ImmutableTriple<>(
+                true, new ConditionalExpression(
+                        condition, expressionThen, expressionElse),
+                remainingTokens);
+    }
+
+    @SuppressWarnings({"java:S1452"})  // Remove generic wildcard type.
+    public
+    Triple<Boolean, ? extends Condition, ? extends List<Token>>
+    tryReduceCondition(final List<Token> tokens) {
+
+        val tokensSize = tokens.size();
+        forceAssert(tokensSize > 4);
+        val token0 = tokens.get(0);
+        forceAssert(Token.Type.NATURAL_LITERAL == token0.getType());  // XXX
+        val token1 = tokens.get(1);
+        forceAssert(Token.Type.IS == token1.getType());  // XXX
+        val token2 = tokens.get(2);
+        forceAssert(Token.Type.LESS == token2.getType());  // XXX
+        val token3 = tokens.get(3);
+        forceAssert(Token.Type.THAN == token3.getType());  // XXX
+        val token4 = tokens.get(4);
+        forceAssert(Token.Type.NATURAL_LITERAL == token4.getType());  // XXX
+        val remainingTokens = new ArrayList<Token>(tokensSize - 5);
+        for (int i = 0; i < tokensSize - 5; i++) {
+            val someToken = tokens.get(i + 5);
+            remainingTokens.add(someToken);
+        }
+        return new ImmutableTriple<>(
+                true, new LessThanCondition(token0, token4), remainingTokens);
     }
 
     public List<Token> reduceFunctionTail(
