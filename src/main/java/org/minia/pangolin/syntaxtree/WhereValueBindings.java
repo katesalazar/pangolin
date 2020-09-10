@@ -5,7 +5,7 @@ import java.util.List;
 
 public class WhereValueBindings {
 
-    @SuppressWarnings({"java:S10684"}) // "unused private field"
+    @SuppressWarnings({"java:S1068"}) // "unused private field"
     private final List<WhereValueBinding> whereValueBindingsList;
 
     public WhereValueBindings(
@@ -13,5 +13,25 @@ public class WhereValueBindings {
 
         super();
         this.whereValueBindingsList = new ArrayList<>(whereValueBindings);
+    }
+
+    public boolean bound(final CharSequence identifier) {
+        for (final WhereValueBinding whereValueBinding:
+                whereValueBindingsList) {
+            if (whereValueBinding.bound(identifier)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public Expression expressionFor(final CharSequence identifier) {
+        for (final WhereValueBinding whereValueBinding:
+                whereValueBindingsList) {
+            if (whereValueBinding.bound(identifier)) {
+                return whereValueBinding.expressionFor(identifier);
+            }
+        }
+        throw new IllegalStateException("FIXME");
     }
 }

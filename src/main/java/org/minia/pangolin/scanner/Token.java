@@ -5,8 +5,7 @@ import lombok.ToString;
 
 import static org.minia.pangolin.util.Util.forcedAssertion;
 
-@ToString
-public class Token {
+@ToString public class Token {
 
     /**  Lower case `a` word, as a {@link String}. */
     static final String LC_A = "a";

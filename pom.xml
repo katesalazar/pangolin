@@ -7,6 +7,9 @@
   <artifactId>pangolin</artifactId>
   -->
   <artifactId>pangolin_integration</artifactId>
+  <!--
+  <artifactId>pangolin_experimental</artifactId>
+  -->
   <version>0.0.1-SNAPSHOT</version>
   <packaging>jar</packaging>
 
@@ -14,6 +17,9 @@
   <name>pangolin</name>
   -->
   <name>pangolin_integration</name>
+  <!--
+  <name>pangolin_experimental</name>
+  -->
   <url>http://vcs.minia.org/cgit/pangolin/</url>
 
   <properties>

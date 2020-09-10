@@ -11,6 +11,7 @@ import org.minia.pangolin.scanner.Scanner;
 import org.minia.pangolin.scanner.Token;
 import org.minia.pangolin.syntaxtree.Application;
 import org.minia.pangolin.syntaxtree.ExecutionRequest;
+import org.minia.pangolin.syntaxtree.IdentifierExpression;
 import org.minia.pangolin.syntaxtree.NamedFunction;
 import org.minia.pangolin.syntaxtree.NaturalLiteralExpression;
 import org.minia.pangolin.syntaxtree.NewLineOperation;
@@ -516,8 +517,11 @@ public class Parser {
             return new ImmutablePair<>(false, Short.MIN_VALUE);
         }
         val token0 = tokens.get(0);
-        forcedAssertion(Token.Type.NATURAL_LITERAL == token0.getType());
-        forcedAssertion("0".contentEquals(token0.getNaturalLiteralContent()));
+        if (Token.Type.NATURAL_LITERAL == token0.getType()) {  /* XXX replace for expression detection */
+            forcedAssertion(Token.Type.NATURAL_LITERAL == token0.getType());  /* XXX replace for expression detection */
+        } else {  /* XXX replace for expression detection */
+            forcedAssertion(Token.Type.IDENTIFIER == token0.getType());  /* XXX replace for expression detection */
+        }  /* XXX replace for expression detection */
         return new ImmutablePair<>(true, (short) 1);
     }
 
@@ -710,15 +714,17 @@ public class Parser {
                 tokensAfterAndDoesClauseReduction);
         val functionOperations =
                 reduceFunctionBodyClauseReturnedPair.getLeft();
+        val functionWhereClauses =
+                reduceFunctionBodyClauseReturnedPair.getMiddle();
         val remainingTokensAfterFunctionBody =
                 reduceFunctionBodyClauseReturnedPair.getRight();
         val remainingTokensAfterFunctionReduction = reduceFunctionTail(
                 remainingTokensAfterFunctionBody, expectedFunctionName);
         val functionName = expectedFunctionName;
         return new ImmutablePair<>(
-                new NamedFunction(functionName, functionOperations),
-                remainingTokensAfterFunctionReduction
-        );
+                new NamedFunction(
+                        functionName, functionOperations, functionWhereClauses),
+                remainingTokensAfterFunctionReduction);
     }
 
     /**  @return A {@link Pair} where the left side holds the name of
@@ -1121,18 +1127,33 @@ public class Parser {
         val token4 = tokens.get(4);
         forcedAssertion(Token.Type.TO == token4.getType());
         val token5 = tokens.get(5);
-        forcedAssertion(Token.Type.NATURAL_LITERAL == token5.getType());  /* XXX */
+        if (Token.Type.NATURAL_LITERAL == token5.getType()) {  /* XXX replace for expression detection */
+            forcedAssertion(Token.Type.NATURAL_LITERAL == token5.getType());  /* XXX replace for expression detection */
+        } else {  /* XXX replace for expression detection */
+            forcedAssertion(Token.Type.IDENTIFIER == token5.getType());  /* XXX replace for expression detection */
+        }  /* XXX replace for expression detection */
         final List<Token> remainingTokens = new ArrayList<>(tokensSize - 6);
         for (int i = 0; i < tokensSize - 6; i++) {
             val someToken = tokens.get(i + 6);
             remainingTokens.add(someToken);
         }
-        return new ImmutableTriple<>(
-                true,
-                new WhereValueBinding(
-                        token1,
-                        NaturalLiteralExpression.fromNaturalLiteral(token5)),
-                remainingTokens);
+        if (Token.Type.NATURAL_LITERAL == token5.getType()) {  /* XXX replace for expression detection */
+            return new ImmutableTriple<>(  /* XXX replace for expression detection */
+                    true,  /* XXX replace for expression detection */
+                    new WhereValueBinding(  /* XXX replace for expression detection */
+                            token1,  /* XXX replace for expression detection */
+                            NaturalLiteralExpression.fromNaturalLiteralToken(  /* XXX replace for expression detection */
+                                    token5)),  /* XXX replace for expression detection */
+                    remainingTokens);  /* XXX replace for expression detection */
+        } else {  /* XXX replace for expression detection */
+            forcedAssertion(Token.Type.IDENTIFIER == token5.getType());  /* XXX replace for expression detection */
+            return new ImmutableTriple<>(  /* XXX replace for expression detection */
+                    true,  /* XXX replace for expression detection */
+                    new WhereValueBinding(  /* XXX replace for expression detection */
+                            token1,  /* XXX replace for expression detection */
+                            IdentifierExpression.fromIdentifierToken(token5)),  /* XXX replace for expression detection */
+                    remainingTokens);  /* XXX replace for expression detection */
+        }  /* XXX replace for expression detection */
     }
 
     public List<Token> reduceFunctionTail(

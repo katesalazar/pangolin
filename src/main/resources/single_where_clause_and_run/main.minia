@@ -1,0 +1,17 @@
+function ident main ident ends
+	is a command line interface application function
+	and receives nothing at all
+	and returns nothing at all
+	so it causes side effects
+	and does
+	print id something id ends
+	and then new line
+	where id something id ends is bound to 0
+end function ident main ident ends
+
+application identifier application identifier ends
+	is a command line interface application
+	and the entry point is function identifier main identifier ends
+end application identifier application identifier ends
+
+run command line interface application identifier application identifier ends

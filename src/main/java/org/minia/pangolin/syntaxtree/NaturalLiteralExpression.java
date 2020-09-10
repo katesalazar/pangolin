@@ -1,12 +1,13 @@
 package org.minia.pangolin.syntaxtree;
 
+import lombok.Getter;
 import org.minia.pangolin.scanner.Token;
 
 import static org.minia.pangolin.util.Util.forceAssert;
 
 public class NaturalLiteralExpression implements Expression {
 
-    private Token naturalLiteralToken;
+    @Getter private Token naturalLiteralToken;
 
     /** Invalidated default constructor. */
     private NaturalLiteralExpression() {
@@ -20,7 +21,7 @@ public class NaturalLiteralExpression implements Expression {
         this.naturalLiteralToken = naturalLiteralToken;
     }
 
-    public static NaturalLiteralExpression fromNaturalLiteral(
+    public static NaturalLiteralExpression fromNaturalLiteralToken(
             final Token token) {
 
         forceAssert(token.getType() == Token.Type.NATURAL_LITERAL);

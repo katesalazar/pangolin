@@ -7,8 +7,7 @@ import java.util.List;
 
 public class Program {
 
-    @Getter
-    private final List<Document> documents;
+    @Getter private final List<Document> documents;
 
     public Program(final Document document) {
         documents = new ArrayList<>(1);
