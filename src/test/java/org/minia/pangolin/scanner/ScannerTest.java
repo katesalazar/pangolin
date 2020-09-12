@@ -4,7 +4,6 @@ import junit.framework.Test;
 import junit.framework.TestCase;
 import junit.framework.TestSuite;
 import lombok.val;
-import lombok.var;
 import org.minia.pangolin.Document;
 import org.minia.pangolin.Program;
 
@@ -39,7 +38,7 @@ public class ScannerTest extends TestCase
         documents.add(anotherDocument);
         val program = new Program(documents);
         val scanner = new Scanner(program);
-        var excepted = false;
+        boolean excepted = false;
         try {
             scanner.moreTokens();
         } catch (AssertionError ignore) {
@@ -58,7 +57,7 @@ public class ScannerTest extends TestCase
         documents.add(anotherDocument);
         val program = new Program(documents);
         val scanner = new Scanner(program);
-        var excepted = false;
+        boolean excepted = false;
         try {
             scanner.nextToken();
         } catch (AssertionError ignore) {

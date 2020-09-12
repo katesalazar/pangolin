@@ -7,3 +7,6 @@ target/
 
 #   Ignore Vim stuff.
 *.swp
+
+#   Java Decompiler (http://java-decompiler.github.io/).
+jd-gui.cfg

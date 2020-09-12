@@ -3,13 +3,12 @@ package org.minia.pangolin.syntaxtree;
 import junit.framework.Test;
 import junit.framework.TestCase;
 import junit.framework.TestSuite;
-import lombok.var;
 
 /**
  * Unit test.
  */
-public class LessThanConditionTest extends TestCase
-{
+public class LessThanConditionTest extends TestCase {
+
     /**
      * Create the test case
      *
@@ -27,7 +26,7 @@ public class LessThanConditionTest extends TestCase
     }
 
     public void test0() {
-        var excepted = false;
+        boolean excepted = false;
         try {
             new LessThanCondition(null, null);
         } catch (final NullPointerException ignore) {

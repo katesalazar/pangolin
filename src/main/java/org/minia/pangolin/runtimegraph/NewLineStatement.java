@@ -1,8 +1,8 @@
 package org.minia.pangolin.runtimegraph;
 
-public class NewLineOperation extends Operation {
+public class NewLineStatement extends Statement {
 
-    NewLineOperation() {
+    NewLineStatement() {
 
         super();
     }

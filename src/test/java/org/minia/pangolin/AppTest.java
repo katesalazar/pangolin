@@ -4,6 +4,7 @@ import junit.framework.Test;
 import junit.framework.TestCase;
 import junit.framework.TestSuite;
 import lombok.val;
+import org.apache.commons.lang3.NotImplementedException;
 import org.minia.pangolin.parser.LanguageNotRecognizedException;
 
 /**
@@ -102,5 +103,29 @@ public class AppTest extends TestCase {
         val runAppResult =
                 app.runApp("src/main/resources/two_functions/");
         assertEquals(true, runAppResult);
+    }
+
+    /** TODO */
+    public void test11() throws LanguageNotRecognizedException {
+        val app = new App();
+        boolean excepted = false;
+        try {
+            app.runApp("src/main/resources/function_call_zero/");
+        } catch (final NotImplementedException ignore) {
+            excepted = true;
+        }
+        assertTrue(excepted);
+    }
+
+    /** TODO */
+    public void test12() throws LanguageNotRecognizedException {
+        val app = new App();
+        boolean excepted = false;
+        try {
+            app.runApp("src/main/resources/function_call_one/");
+        } catch (final NotImplementedException ignore) {
+            excepted = true;
+        }
+        assertTrue(excepted);
     }
 }

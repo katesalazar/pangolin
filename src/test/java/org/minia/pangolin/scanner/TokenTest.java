@@ -4,7 +4,6 @@ import junit.framework.Test;
 import junit.framework.TestCase;
 import junit.framework.TestSuite;
 import lombok.val;
-import lombok.var;
 
 /**
  * Unit test.
@@ -28,7 +27,7 @@ public class TokenTest extends TestCase
     }
 
     public void test0() {
-        var excepted = false;
+        boolean excepted = false;
         try {
             new Token(Token.Type.FUNCTION, "garbage");
         } catch (AssertionError ignore) {
@@ -38,14 +37,9 @@ public class TokenTest extends TestCase
     }
 
     public void test1() {
-        var excepted = false;
-        try {
-            Token.stringFor(
-                    new Token(Token.Type.IDENTIFIER, "garbage"));
-        } catch (final IllegalArgumentException ignore) {
-            excepted = true;
-        }
-        assertTrue(excepted);
+        val stringFor = Token.stringFor(
+                new Token(Token.Type.IDENTIFIER, "garbage"));
+        assertEquals("garbage", stringFor);
     }
 
     public void testNotAnIdentifier0() {
@@ -54,7 +48,31 @@ public class TokenTest extends TestCase
     }
 
     public void testNotAnIdentifier1() {
-        val token = new Token(Token.Type.IDENTIFIER);
+        val token = new Token(Token.Type.IDENTIFIER, "foo");
         assertFalse(token.notAnIdentifier());
+    }
+
+    public void testToString0() {
+        val token = new Token(Token.Type.A);
+        val string = token.toString();
+        assertEquals("a", string);
+    }
+
+    public void testToString1() {
+        val token = new Token(Token.Type.IDENTIFIER, "foo");
+        val string = token.toString();
+        assertEquals("foo", string);
+    }
+
+    public void testToString2() {
+        val token = new Token(Token.Type.STRING_LITERAL, "foo");
+        val string = token.toString();
+        assertEquals("foo", string);
+    }
+
+    public void testToString3() {
+        val token = new Token(Token.Type.NATURAL_LITERAL, "foo");
+        val string = token.toString();
+        assertEquals("foo", string);
     }
 }

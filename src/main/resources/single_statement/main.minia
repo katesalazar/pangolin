@@ -1,0 +1,9 @@
+function ident main ident ends
+	is a command line interface application function
+	and receives nothing at all
+	and returns nothing at all
+	so it causes side effects
+	and executes a single statement
+	and does
+	new line
+end function ident main ident ends

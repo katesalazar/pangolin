@@ -3,7 +3,6 @@ package org.minia.pangolin.semantics;
 import junit.framework.Test;
 import junit.framework.TestCase;
 import junit.framework.TestSuite;
-import lombok.var;
 
 /**
  * Unit test.
@@ -27,7 +26,7 @@ public class UnboundIdentifierExceptionTest extends TestCase
     }
 
     public void test0() {
-        var excepted = false;
+        boolean excepted = false;
         try {
             throw new UnboundIdentifierException("foo");
         } catch (final UnboundIdentifierException ignore) {

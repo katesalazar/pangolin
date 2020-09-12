@@ -9,8 +9,8 @@ import org.minia.pangolin.scanner.Token;
 /**
  * Unit test.
  */
-public class NamedFunctionTest extends TestCase
-{
+public class NamedFunctionTest extends TestCase {
+
     /**
      * Create the test case
      *
@@ -29,8 +29,15 @@ public class NamedFunctionTest extends TestCase
 
     public void test0() {
 
-        val namedFunction = new NamedFunction(null, null, null);
+        val namedFunction = new NamedFunction(null, (Statements) null, null);
         assertNull(namedFunction.getName());
-        assertNull(namedFunction.getOperations());
+        assertNull(namedFunction.getStatements());
+    }
+
+    public void test1() {
+
+        val namedFunction = new NamedFunction(null, (Expression) null, null);
+        assertNull(namedFunction.getName());
+        assertNull(namedFunction.getStatements());
     }
 }

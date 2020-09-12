@@ -1,11 +1,13 @@
 package org.minia.pangolin.parser;
 
 import lombok.Getter;
+import lombok.val;
 import org.minia.pangolin.Program;
 import org.minia.pangolin.semantics.UnboundIdentifierException;
 import org.minia.pangolin.syntaxtree.Application;
 import org.minia.pangolin.syntaxtree.ExecutionRequest;
 import org.minia.pangolin.syntaxtree.NamedFunction;
+import org.minia.pangolin.syntaxtree.TopLevelNode;
 
 import java.util.List;
 
@@ -66,6 +68,30 @@ public class ParseTree {
         namedFunction = null;
         application = null;
         this.executionRequest = executionRequest;
+    }
+
+    public ParseTree(final TopLevelNode topLevelNode) {
+        val topLevelNodeClass = topLevelNode.getClass();
+        if (NamedFunction.class.equals(topLevelNodeClass)) {
+            program = null;
+            type = Type.NAMED_FUNCTION;
+            namedFunction = (NamedFunction) topLevelNode;
+            application = null;
+            executionRequest = null;
+        } else if (Application.class.equals(topLevelNodeClass)) {
+            program = null;
+            type = Type.APPLICATION;
+            namedFunction = null;
+            application = (Application) topLevelNode;
+            executionRequest = null;
+        } else {
+            forceAssert(ExecutionRequest.class.equals(topLevelNodeClass));
+            program = null;
+            type = Type.EXECUTION_REQUEST;
+            namedFunction = null;
+            application = null;
+            executionRequest = (ExecutionRequest) topLevelNode;
+        }
     }
 
     public org.minia.pangolin.runtimegraph.NamedFunction

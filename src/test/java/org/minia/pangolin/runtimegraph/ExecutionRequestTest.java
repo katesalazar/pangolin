@@ -4,7 +4,6 @@ import junit.framework.Test;
 import junit.framework.TestCase;
 import junit.framework.TestSuite;
 import lombok.val;
-import lombok.var;
 import org.minia.pangolin.parser.LanguageNotRecognizedException;
 
 import java.util.ArrayList;
@@ -44,7 +43,7 @@ public class ExecutionRequestTest extends TestCase
                         "foo");
         val rtgApplications = new ArrayList<Application>(1);
         rtgApplications.add(rtgApplication);
-        var excepted = false;
+        boolean excepted = false;
         try {
             ExecutionRequest.from(stExecutionRequest, rtgApplications);
         } catch (final LanguageNotRecognizedException ignore) {

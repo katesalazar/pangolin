@@ -7,7 +7,7 @@ public class NamedFunction {
 
     @Getter private final CharSequence name;
 
-    private final Operations operations;
+    private final Statements statements;
 
     private NamedFunction() {
         super();
@@ -19,12 +19,12 @@ public class NamedFunction {
                     throws UnboundIdentifierException {
 
         name = namedFunction.getName();
-        operations = new OperationsFactory().from(
-                namedFunction.getOperations(),
+        statements = new StatementsFactory().from(
+                namedFunction.getStatements(),
                 namedFunction.getWhereValueBindings());
     }
 
     public void run() {
-        operations.run();
+        statements.run();
     }
 }

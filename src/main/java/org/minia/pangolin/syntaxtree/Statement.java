@@ -1,3 +1,3 @@
 package org.minia.pangolin.syntaxtree;
 
-public interface Operation {}
+public interface Statement {}

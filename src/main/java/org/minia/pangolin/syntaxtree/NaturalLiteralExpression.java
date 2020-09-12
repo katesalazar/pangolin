@@ -5,20 +5,27 @@ import org.minia.pangolin.scanner.Token;
 
 import static org.minia.pangolin.util.Util.forceAssert;
 
-public class NaturalLiteralExpression implements Expression {
+public final class NaturalLiteralExpression extends Expression {
 
     @Getter private Token naturalLiteralToken;
 
     /** Invalidated default constructor. */
-    private NaturalLiteralExpression() {
+    NaturalLiteralExpression() {
         super();
         throw new UnsupportedOperationException("FIXME");
     }
 
     private NaturalLiteralExpression(final Token naturalLiteralToken) {
 
-        super();
+        super(true, new NaturalExpressionType());
         this.naturalLiteralToken = naturalLiteralToken;
+    }
+
+    private NaturalLiteralExpression(
+            final NaturalLiteralExpression naturalLiteralExpression) {
+        super(true, new NaturalExpressionType());
+        this.naturalLiteralToken =
+                naturalLiteralExpression.naturalLiteralToken;
     }
 
     public static NaturalLiteralExpression fromNaturalLiteralToken(
@@ -26,5 +33,10 @@ public class NaturalLiteralExpression implements Expression {
 
         forceAssert(token.getType() == Token.Type.NATURAL_LITERAL);
         return new NaturalLiteralExpression(token);
+    }
+
+    public static NaturalLiteralExpression fromNaturalLiteralExpression(
+            final NaturalLiteralExpression naturalLiteralExpression) {
+        return new NaturalLiteralExpression(naturalLiteralExpression);
     }
 }

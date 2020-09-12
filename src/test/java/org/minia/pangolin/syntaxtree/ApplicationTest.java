@@ -9,8 +9,8 @@ import org.minia.pangolin.scanner.Token;
 /**
  * Unit test.
  */
-public class ApplicationTest extends TestCase
-{
+public class ApplicationTest extends TestCase {
+
     /**
      * Create the test case
      *

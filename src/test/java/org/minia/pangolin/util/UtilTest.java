@@ -4,7 +4,6 @@ import junit.framework.Test;
 import junit.framework.TestCase;
 import junit.framework.TestSuite;
 import lombok.val;
-import lombok.var;
 
 import static org.minia.pangolin.util.Util.forceAssert;
 
@@ -35,7 +34,7 @@ public class UtilTest extends TestCase
     }
 
     public void test1() {
-        var excepted = false;
+        boolean excepted = false;
         try {
             forceAssert(false);
         } catch (AssertionError ignore) {

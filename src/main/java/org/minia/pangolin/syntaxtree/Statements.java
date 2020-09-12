@@ -6,10 +6,10 @@ import lombok.val;
 import java.util.ArrayList;
 import java.util.List;
 
-/**  <p>A {@link List} of {@link Operation}s, however the class is
+/**  <p>A {@link List} of {@link Statement}s, however the class is
  * necessary because it has to be tagged with either parallel or
  * sequential execution. */
-public class Operations {
+public class Statements {
 
     public enum RunTimeInterleave {
 
@@ -29,52 +29,61 @@ public class Operations {
         UNKNOWN
     }
 
-    @Getter private final List<Operation> operations;
+    @Getter private final List<Statement> statements;
 
-    @Getter private final RunTimeInterleave  runTimeInterleave;
+    @Getter private final RunTimeInterleave runTimeInterleave;
 
     /**  <p>The default constructor is private. Construct instances by
      * using either {@link #parallel(List)} or {@link
      * #sequential(List)}.
-     *   @param operations The operations to be executed.
+     *   @param statements The operations to be executed.
      *   @param runTimeInterleave The run time interleaving to be used
      * when running the `operations`. */
-    private Operations(
-            final List<Operation> operations,
+    private Statements(
+            final List<Statement> statements,
             final RunTimeInterleave runTimeInterleave) {
 
-        this.operations = operations;
+        this.statements = statements;
         this.runTimeInterleave = runTimeInterleave;
+    }
+
+    private Statements(final Statements statements) {
+        this.statements = statements.statements;
+        runTimeInterleave = statements.runTimeInterleave;
     }
 
     /**  <p>Construct instances of this class by using either this or
      * {@link #sequential(List)}.
-     *   @see #Operations(List, RunTimeInterleave) */
-    public static Operations parallel(
-            final List<Operation> operations) {
+     *   @see #Statements(List, RunTimeInterleave) */
+    public static Statements parallel(
+            final List<Statement> statements) {
 
-        return new Operations(operations, RunTimeInterleave.PARALLEL);
+        return new Statements(statements, RunTimeInterleave.PARALLEL);
     }
 
     /**  <p>Construct instances of this class by using either this or
      * {@link #parallel(List)}.
-     *   @see #Operations(List, RunTimeInterleave) */
-    public static Operations sequential(
-            final List<Operation> operations) {
+     *   @see #Statements(List, RunTimeInterleave) */
+    public static Statements sequential(
+            final List<Statement> statements) {
 
-        return new Operations(operations, RunTimeInterleave.SEQUENTIAL);
+        return new Statements(statements, RunTimeInterleave.SEQUENTIAL);
     }
 
     /**  <p>The special case of a single operation isn't really
      * sequential nor parallel... is it? */
-    public static Operations single(final Operation operation) {
+    public static Statements single(final Statement statement) {
 
-        val operations = new ArrayList<Operation>(1);
-        operations.add(operation);
-        return new Operations(operations, RunTimeInterleave.ANY);
+        val statements = new ArrayList<Statement>(1);
+        statements.add(statement);
+        return new Statements(statements, RunTimeInterleave.ANY);
+    }
+
+    public static Statements copy(final Statements statements) {
+        return new Statements(statements);
     }
 
     public Short size() {
-        return operations == null ? 0 : (short) operations.size();
+        return statements == null ? 0 : (short) statements.size();
     }
 }

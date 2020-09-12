@@ -2,7 +2,7 @@ package org.minia.pangolin.syntaxtree;
 
 import lombok.Getter;
 
-public class Application {
+public class Application implements TopLevelNode {
 
     @Getter private final CharSequence applicationName;
 

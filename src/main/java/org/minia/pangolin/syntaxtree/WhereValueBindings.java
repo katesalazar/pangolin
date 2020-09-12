@@ -1,18 +1,31 @@
 package org.minia.pangolin.syntaxtree;
 
+import lombok.Getter;
+
 import java.util.ArrayList;
 import java.util.List;
 
 public class WhereValueBindings {
 
-    @SuppressWarnings({"java:S1068"}) // "unused private field"
-    private final List<WhereValueBinding> whereValueBindingsList;
+    @Getter private final List<WhereValueBinding> whereValueBindingsList;
+
+    public WhereValueBindings(final WhereValueBinding whereValueBinding) {
+        super();
+        whereValueBindingsList = new ArrayList<>(1);
+        whereValueBindingsList.add(whereValueBinding);
+    }
 
     public WhereValueBindings(
             final List<WhereValueBinding> whereValueBindings) {
 
         super();
         this.whereValueBindingsList = new ArrayList<>(whereValueBindings);
+    }
+
+    public WhereValueBindings(final WhereValueBindings whereValueBindings) {
+        super();
+        whereValueBindingsList =
+                new ArrayList<>(whereValueBindings.whereValueBindingsList);
     }
 
     public boolean bound(final CharSequence identifier) {

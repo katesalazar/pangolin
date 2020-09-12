@@ -1,13 +1,13 @@
 package org.minia.pangolin.runtimegraph;
 
-public abstract class Operation {
+public abstract class Statement {
 
     @SuppressWarnings("java:S1116")  // No empty statements.
-    protected Operation() {
+    protected Statement() {
         super();
-        if (PrintOperation.class.equals(getClass())) {
+        if (PrintStatement.class.equals(getClass())) {
             ;
-        } else if (NewLineOperation.class.equals(getClass())) {
+        } else if (NewLineStatement.class.equals(getClass())) {
             ;
         } else {
             throw new UnsupportedOperationException("FIXME");

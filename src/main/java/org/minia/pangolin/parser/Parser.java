@@ -2,29 +2,37 @@ package org.minia.pangolin.parser;
 
 import lombok.extern.java.Log;
 import lombok.val;
-import lombok.var;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.ImmutableTriple;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.lang3.tuple.Triple;
+import org.javatuples.Quartet;
 import org.minia.pangolin.scanner.Scanner;
 import org.minia.pangolin.scanner.Token;
 import org.minia.pangolin.syntaxtree.Application;
 import org.minia.pangolin.syntaxtree.Condition;
 import org.minia.pangolin.syntaxtree.ConditionalExpression;
+import org.minia.pangolin.syntaxtree.EmptyExpressionType;
 import org.minia.pangolin.syntaxtree.ExecutionRequest;
 import org.minia.pangolin.syntaxtree.Expression;
+import org.minia.pangolin.syntaxtree.ExpressionType;
+import org.minia.pangolin.syntaxtree.ExpressionTypeFactory;
+import org.minia.pangolin.syntaxtree.ExecuteStatement;
+import org.minia.pangolin.syntaxtree.FunctionCallExpression;
 import org.minia.pangolin.syntaxtree.IdentifierExpression;
 import org.minia.pangolin.syntaxtree.LessThanCondition;
 import org.minia.pangolin.syntaxtree.NamedFunction;
+import org.minia.pangolin.syntaxtree.NamedFunctionBody;
 import org.minia.pangolin.syntaxtree.NaturalLiteralExpression;
-import org.minia.pangolin.syntaxtree.NewLineOperation;
-import org.minia.pangolin.syntaxtree.Operation;
-import org.minia.pangolin.syntaxtree.Operations;
-import org.minia.pangolin.syntaxtree.Operations.RunTimeInterleave;
-import org.minia.pangolin.syntaxtree.PrintOperation;
+import org.minia.pangolin.syntaxtree.NewLineStatement;
+import org.minia.pangolin.syntaxtree.PrintStatement;
+import org.minia.pangolin.syntaxtree.Statement;
+import org.minia.pangolin.syntaxtree.Statements;
+import org.minia.pangolin.syntaxtree.Statements.RunTimeInterleave;
+import org.minia.pangolin.syntaxtree.TopLevelNode;
 import org.minia.pangolin.syntaxtree.WhereValueBinding;
 import org.minia.pangolin.syntaxtree.WhereValueBindings;
+import org.minia.pangolin.syntaxtree.WhereValueBindingsFactory;
 import org.minia.pangolin.Program;
 
 import java.util.ArrayList;
@@ -38,7 +46,12 @@ import static org.minia.pangolin.util.Util.forcedAssertion;
     private static final String FIXME = "FIXME";
 
     private enum Reduction {
-        NAMED_FUNCTION, APPLICATION, EXECUTION_REQUEST
+        NAMED_FUNCTION,
+        APPLICATION,
+        EXECUTION_REQUEST,
+
+        /**  No reduction can be performed. */
+        NONE
     }
 
     /**  {@link Program} to be parsed by this parser. */
@@ -67,317 +80,835 @@ import static org.minia.pangolin.util.Util.forcedAssertion;
             parsedTrees.add(parseTree);
             return parsedTrees;
         }
-        var canReduceResults = canReduce(tokens);
-        var canReduce = canReduceResults.getLeft();
-        var whichReduction = canReduceResults.getRight();
+        Quartet<
+                Boolean, Parser.Reduction, ? extends TopLevelNode, List<Token>
+        > tryReduceResults = tryReduce(tokens);
+        boolean canReduce = tryReduceResults.getValue0();
+        List<Token> tokensAfterReduction = null;
+        if (canReduce) {
+            tokensAfterReduction = tryReduceResults.getValue3();
+        }
         val parsedTrees = new ArrayList<ParseTree>(16);
         while (canReduce) {
-            final Pair<ParseTree, List<Token>> stuff =
-                    reduce(tokens, whichReduction);
-            val parseTree = stuff.getLeft();
+            val topLevelNode = tryReduceResults.getValue2();
+            tokensAfterReduction = tryReduceResults.getValue3();
+            val parseTree = new ParseTree(topLevelNode);
             parsedTrees.add(parseTree);
-            tokens = stuff.getRight();
-            if (tokens.isEmpty()) {
+            if (tokensAfterReduction.isEmpty()) {
                 return parsedTrees;
             }
-            canReduceResults = canReduce(tokens);
-            canReduce = canReduceResults.getLeft();
-            whichReduction = canReduceResults.getRight();
+            tryReduceResults = tryReduce(tokensAfterReduction);
+            canReduce = tryReduceResults.getValue0();
         }
-        throw new IllegalStateException(FIXME);
+        throw new LanguageNotRecognizedException(concat3(
+                "No reduction could be made, and yet these tokens remained ",
+                "to be parsed: ", tokensAfterReduction));
     }
 
-    public Pair<Boolean, Reduction> canReduce(final List<Token> tokens)
-            throws LanguageNotRecognizedException {
-
-        if (canReduceFunction(tokens)) {
-            return new ImmutablePair<>(true, Reduction.NAMED_FUNCTION);
+    String concat2(final Object o0, final Object o1) {
+        forceAssert(String.class.equals(o0.getClass()));
+        if (o1 == null) {
+            return o0.toString();
         }
-        if (canReduceApplication(tokens)) {
-            return new ImmutablePair<>(true, Reduction.APPLICATION);
+        if (String.class.equals(o1.getClass())) {
+            val s0 = (String) o0;
+            return s0 + o1;
+        } else {
+            val s1 = o1.toString();
+            return o0 + s1;
         }
-        if (canReduceExecutionRequest(tokens)) {
-            return new ImmutablePair<>(
-                    true, Reduction.EXECUTION_REQUEST);
-        }
-        return new ImmutablePair<>(false, null);
     }
 
-    @SuppressWarnings({/*"java:S1126", "java:S1134", */"java:S3776"}) /* Return of boolean expressions should not be wrapped into an "if-then-else" statement. */ /* Track uses of "FIX-ME" tags. */ /* Cognitive Complexity of methods should not be too high. */
-    public boolean canReduceFunction(final List<Token> tokens)
+    private String concat3(final Object o0, final Object o1, final Object o2) {
+        return concat2(concat2(o0, o1), o2);
+    }
+
+    /**  S1452: Remove usage of generic wildcard type. */
+    @SuppressWarnings({"java:S1452"})
+    public
+    Quartet<Boolean, Reduction, ? extends TopLevelNode, List<Token>>
+    tryReduce(final List<Token> tokens) throws LanguageNotRecognizedException {
+        val tryReduceNamedFunctionResult = tryReduceNamedFunction(tokens);
+        val namedFunctionWasReduced = tryReduceNamedFunctionResult.getLeft();
+        if (namedFunctionWasReduced) {
+            val namedFunction = tryReduceNamedFunctionResult.getMiddle();
+            val tokensAfterNamedFunction =
+                    tryReduceNamedFunctionResult.getRight();
+            return new Quartet<>(
+                    true, Reduction.NAMED_FUNCTION, namedFunction,
+                    tokensAfterNamedFunction);
+        }
+        val tryReduceApplicationResult = tryReduceApplication(tokens);
+        val applicationWasReduced = tryReduceApplicationResult.getLeft();
+        if (applicationWasReduced) {
+            val application = tryReduceApplicationResult.getMiddle();
+            val tokensAfterApplication = tryReduceApplicationResult.getRight();
+            return new Quartet<>(
+                    true, Reduction.APPLICATION, application,
+                    tokensAfterApplication);
+        }
+        val tryReduceExecutionRequestResult = tryReduceExecutionRequest(tokens);
+        val executionRequestWasReduced =
+                tryReduceExecutionRequestResult.getLeft();
+        if (executionRequestWasReduced) {
+            val executionRequest = tryReduceExecutionRequestResult.getMiddle();
+            val tokensAfterExecutionRequest =
+                    tryReduceExecutionRequestResult.getRight();
+            return new Quartet<>(
+                    true, Reduction.EXECUTION_REQUEST, executionRequest,
+                    tokensAfterExecutionRequest);
+        }
+        return new Quartet<>(false, Reduction.NONE, null, null);
+    }
+
+    /**  <p>`S:3776`: Cognitive complexity of methods should not be too
+     * high. */
+    @SuppressWarnings({"java:S3776"})
+    public
+    Triple<Boolean, NamedFunction, List<Token>>
+    tryReduceNamedFunction(final List<Token> tokens)
             throws LanguageNotRecognizedException {
+
+        val tryReduceNamedFunctionHeadStartResult =
+                tryReduceNamedFunctionHeadStart(tokens);
+        val canReduceNamedFunctionHeadStart =
+                tryReduceNamedFunctionHeadStartResult.getLeft();
+        if (!canReduceNamedFunctionHeadStart) {
+            return new ImmutableTriple<>(false, null, null);
+        }
+        val expectedIdentifierAtNamedFunctionTail =
+                tryReduceNamedFunctionHeadStartResult.getMiddle();
+        val remainingTokensAfterNamedFunctionHeadStart =
+                tryReduceNamedFunctionHeadStartResult.getRight();
+
+        val tryReduceNamedFunctionTypeResult = tryReduceNamedFunctionType(
+                remainingTokensAfterNamedFunctionHeadStart);
+        val canReduceNamedFunctionType =
+                tryReduceNamedFunctionTypeResult.getLeft();
+        forceAssert(canReduceNamedFunctionType);
+        val remainingTokensAfterNamedFunctionType =
+                tryReduceNamedFunctionTypeResult.getRight();
+
+        val tryReduceNamedFunctionReceivesClauseResult =
+                tryReduceNamedFunctionReceivesClause(
+                        remainingTokensAfterNamedFunctionType);
+        val canReduceNamedFunctionReceivesClause =
+                tryReduceNamedFunctionReceivesClauseResult.getLeft();
+        forceAssert(canReduceNamedFunctionReceivesClause);
+        val remainingTokensAfterNamedFunctionReceivesClause =
+                tryReduceNamedFunctionReceivesClauseResult.getRight();
+
+        val expectedIdentifierAtFunctionTail =
+                expectedIdentifierAtNamedFunctionTail.getIdentifierName();
+
+        val tryReduceNamedFunctionReturnsClauseResult =
+                tryReduceNamedFunctionReturnsClause(
+                        remainingTokensAfterNamedFunctionReceivesClause);
+        val canReduceNamedFunctionReturnsClause =
+                tryReduceNamedFunctionReturnsClauseResult.getLeft();
+        forceAssert(canReduceNamedFunctionReturnsClause);
+        val whatTheFunctionReturns =
+                tryReduceNamedFunctionReturnsClauseResult.getMiddle();
+        val remainingTokensAfterNamedFunctionReturnsClause =
+                tryReduceNamedFunctionReturnsClauseResult.getRight();
+
+        val returnsNothingAtAll = EmptyExpressionType.class.equals(
+                whatTheFunctionReturns.getClass());
+
+        val remainingTokensAfterNamedFunctionReturnsClauseSize =
+                remainingTokensAfterNamedFunctionReturnsClause.size();
+
+        boolean singleStatement = false;
+        boolean sequential = false;
+
+        if (returnsNothingAtAll) {
+
+            forceAssert(remainingTokensAfterNamedFunctionReturnsClauseSize > 8);
+
+            //   Would expect `SO`.
+            val token0 = remainingTokensAfterNamedFunctionReturnsClause.get(0);
+            if (token0.getType() != Token.Type.SO) {
+                return new ImmutableTriple<>(false, null, null);
+            }
+
+            //   Would expect `IT`.
+            val token1 = remainingTokensAfterNamedFunctionReturnsClause.get(1);
+            if (token1.getType() != Token.Type.IT) {
+                return new ImmutableTriple<>(false, null, null);
+            }
+
+            //   Would expect `CAUSES`.
+            val token2 = remainingTokensAfterNamedFunctionReturnsClause.get(2);
+            if (token2.getType() != Token.Type.CAUSES) {
+                return new ImmutableTriple<>(false, null, null);
+            }
+
+            //   Would expect `SIDE`.
+            val token3 = remainingTokensAfterNamedFunctionReturnsClause.get(3);
+            if (token3.getType() != Token.Type.SIDE) {
+                return new ImmutableTriple<>(false, null, null);
+            }
+
+            //   Would expect `EFFECTS`.
+            val token4 = remainingTokensAfterNamedFunctionReturnsClause.get(4);
+            if (token4.getType() != Token.Type.EFFECTS) {
+                return new ImmutableTriple<>(false, null, null);
+            }
+
+            //   Would expect `AND`.
+            val token5 = remainingTokensAfterNamedFunctionReturnsClause.get(5);
+            if (token5.getType() != Token.Type.AND) {
+                return new ImmutableTriple<>(false, null, null);
+            }
+
+            //   Would expect `EXECUTES`.
+            val token6 = remainingTokensAfterNamedFunctionReturnsClause.get(6);
+            if (token6.getType() != Token.Type.EXECUTES) {
+                return new ImmutableTriple<>(false, null, null);
+            }
+
+            //   Would expect `STATEMENTS` or `A` [single statement].
+            val token7 = remainingTokensAfterNamedFunctionReturnsClause.get(7);
+            if (token7.getType() == Token.Type.A) {
+                singleStatement = true;
+            }
+
+            //   Would expect `SEQUENTIALLY` or `CONCURRENTLY` (if not
+            // `singleStatement`) or `SINGLE` (if `singleStatement`).
+            val token8 = remainingTokensAfterNamedFunctionReturnsClause.get(8);
+            if (singleStatement) {
+                forceAssert(token8.getType() == Token.Type.SINGLE);
+            } else {
+                if (token8.getType() == Token.Type.SEQUENTIALLY) {
+                    sequential = true;
+                } else {
+                    forceAssert(token8.getType() == Token.Type.CONCURRENTLY);
+                }
+            }
+        }
+
+        if (returnsNothingAtAll) {
+            if (singleStatement) {
+                forceAssert(
+                        remainingTokensAfterNamedFunctionReturnsClauseSize > 9);
+            } else {
+                forceAssert(remainingTokensAfterNamedFunctionReturnsClauseSize >
+                        10);
+            }
+        } else {
+            forceAssert(remainingTokensAfterNamedFunctionReturnsClauseSize > 1);
+        }
+
+        if (returnsNothingAtAll) {
+            if (singleStatement) {
+                //   Would expect `STATEMENT`.
+                val token9 = remainingTokensAfterNamedFunctionReturnsClause.get(9);
+                if (token9.getType() != Token.Type.STATEMENT) {
+                    return new ImmutableTriple<>(false, null, null);
+                }
+
+                //   Would expect `AND`.
+                val token10 =
+                        remainingTokensAfterNamedFunctionReturnsClause.get(10);
+                if (token10.getType() != Token.Type.AND) {
+                    return new ImmutableTriple<>(false, null, null);
+                }
+
+                //   Would expect `DOES`.
+                val token11 =
+                        remainingTokensAfterNamedFunctionReturnsClause.get(11);
+                if (token11.getType() != Token.Type.DOES) {
+                    return new ImmutableTriple<>(false, null, null);
+                }
+            } else {
+                //   Would expect `AND`.
+                val token9 = remainingTokensAfterNamedFunctionReturnsClause.get(9);
+                if (token9.getType() != Token.Type.AND) {
+                    return new ImmutableTriple<>(false, null, null);
+                }
+
+                //   Would expect `DOES`.
+                val token10 =
+                        remainingTokensAfterNamedFunctionReturnsClause.get(10);
+                if (token10.getType() != Token.Type.DOES) {
+                    return new ImmutableTriple<>(false, null, null);
+                }
+            }
+        } else {
+            //   Would expect `AND`.
+            val token0 = remainingTokensAfterNamedFunctionReturnsClause.get(0);
+            if (token0.getType() != Token.Type.AND) {
+                return new ImmutableTriple<>(false, null, null);
+            }
+
+            //   Would expect `DOES`.
+            val token1 =
+                    remainingTokensAfterNamedFunctionReturnsClause.get(1);
+            if (token1.getType() != Token.Type.DOES) {
+                return new ImmutableTriple<>(false, null, null);
+            }
+        }
+
+        val a = singleStatement ? 12 : 11;
+
+        val nestedCallTokensSize =
+                remainingTokensAfterNamedFunctionReturnsClauseSize -
+                        (
+                                returnsNothingAtAll ?
+                                        a :
+                                        2 /* `and does` */
+                        );
+        final List<Token> nestedCallTokens =
+                new ArrayList<>(nestedCallTokensSize);
+        for (int i = 0; i < nestedCallTokensSize; i++) {
+            nestedCallTokens.add(
+                    remainingTokensAfterNamedFunctionReturnsClause.get(
+                            (
+                                    returnsNothingAtAll ?
+                                            a :
+                                            2 /* `and does` */
+                            ) + i
+                    )
+            );
+        }
+
+        val tryReduceFunctionBodyResults = tryReduceFunctionBody(
+                nestedCallTokens, !returnsNothingAtAll, singleStatement,
+                sequential);
+        val canReduceFunctionBody = tryReduceFunctionBodyResults.getLeft();
+        forceAssert(canReduceFunctionBody);
+        val functionBody = tryReduceFunctionBodyResults.getMiddle();
+        val tokensAfterFunctionBodyReduction =
+                tryReduceFunctionBodyResults.getRight();
+        val tryReduceFunctionTailResult = tryReduceFunctionTail(
+                tokensAfterFunctionBodyReduction,
+                expectedIdentifierAtFunctionTail.toString());
+        val canReduceFunctionTail = tryReduceFunctionTailResult.getLeft();
+        forceAssert(canReduceFunctionTail);
+        val tokensAfterFunctionTailReduction =
+                tryReduceFunctionTailResult.getRight();
+        val namedFunction = new NamedFunction(
+                expectedIdentifierAtFunctionTail, functionBody);
+        return new ImmutableTriple<>(
+                true, namedFunction, tokensAfterFunctionTailReduction);
+    }
+
+    /**  @return a {@link Triple} where: The left part holds whether the
+     * named function head reduction can be applied or not. The middle
+     * part holds the name of the named function, as its {@link Token}.
+     * The right part holds the remaining tokens after this reduction is
+     * applied. */
+    public Triple<Boolean, Token, List<Token>> tryReduceNamedFunctionHeadStart(
+            final List<Token> tokens) {
 
         val tokensSize = tokens.size();
 
-        if (tokensSize < 26) {
-            return false;
+        if (tokensSize < 4) {
+            return new ImmutableTriple<>(false, null, null);
         }
 
         //   Would expect `FUNCTION`.
-        val tokenZero = tokens.get(0);
-        if (tokenZero.getType() != Token.Type.FUNCTION) {
-            return false;
+        val token0 = tokens.get(0);
+        if (token0.getType() != Token.Type.FUNCTION) {
+            return new ImmutableTriple<>(false, null, tokens);
         }
 
         //   Would expect `IDENTIFIER`.
-        val tokenOne = tokens.get(1);
-        if (tokenOne.notAnIdentifier()) {
-            return false;
+        val token1 = tokens.get(1);
+        if (token1.notAnIdentifier()) {
+            return new ImmutableTriple<>(false, null, tokens);
         }
-        val expectedIdentifierAtFunctionTail = tokenOne.getIdentifierName();
 
         //   Would expect `IS`.
-        val tokenTwo = tokens.get(2);
-        if (tokenTwo.getType() != Token.Type.IS) {
-            return false;
+        val token2 = tokens.get(2);
+        if (token2.getType() != Token.Type.IS) {
+            return new ImmutableTriple<>(false, token1, tokens);
         }
+
+        final List<Token> remainingTokens = new ArrayList<>(tokensSize - 3);
+        for (int i = 3; i < tokensSize; i++) {
+            val someToken = tokens.get(i);
+            remainingTokens.add(someToken);
+        }
+
+        return new ImmutableTriple<>(true, token1, remainingTokens);
+    }
+
+    /**  @return a {@link Triple} where: The left part holds whether the
+     * named function type reduction can be applied or not. The middle
+     * part holds the type of the named function. The right part holds
+     * the remaining tokens after this reduction is applied. */
+    public
+    Triple<Boolean, NamedFunction.Type, List<Token>>
+    tryReduceNamedFunctionType(final List<Token> tokens) {
+
+        val tokensSize = tokens.size();
+        forceAssert(tokensSize > 1);
 
         //   Would expect `A`.
-        val tokenThree = tokens.get(3);
-        if (tokenThree.getType() != Token.Type.A) {
-            return false;
+        val token0 = tokens.get(0);
+        if (token0.getType() != Token.Type.A) {
+            return new ImmutableTriple<>(false, null, tokens);
         }
 
-        //   Would expect `COMMAND`.
-        val tokenFour = tokens.get(4);
-        if (tokenFour.getType() != Token.Type.COMMAND) {
-            return false;
+        boolean commandLineInterfaceFunction = false;
+        boolean pureFunction = false;
+
+        //   Would expect `COMMAND` or `PURE`.
+        val token1 = tokens.get(1);
+        if (token1.getType() == Token.Type.COMMAND) {
+            commandLineInterfaceFunction = true;
+        } else if (token1.getType() == Token.Type.PURE) {
+            pureFunction = true;
+        } else {
+            return new ImmutableTriple<>(false, null, tokens);
         }
+
+        final List<Token> remainingTokens;
+
+        if (commandLineInterfaceFunction) {
+            forceAssert(tokensSize > 5);
+
+            return tryReduceCommandLineInterfaceNamedFunctionType(
+                    tokens);
+        } else {
+            forceAssert(pureFunction);
+
+            forceAssert(tokensSize > 2);
+
+            //   Would expect `FUNCTION`.
+            val token2 = tokens.get(2);
+            if (token2.getType() != Token.Type.FUNCTION) {
+                return new ImmutableTriple<>(
+                        false, NamedFunction.Type.CLI, tokens);
+            }
+
+            remainingTokens = discardThreeFrom(tokens);
+
+            return new ImmutableTriple<>(
+                    true, NamedFunction.Type.PURE, remainingTokens);
+        }
+    }
+
+    public
+    Triple<Boolean, NamedFunction.Type, List<Token>>
+    tryReduceCommandLineInterfaceNamedFunctionType(
+            final List<Token> tokens) {
+
+        final List<Token> remainingTokens;
 
         //   Would expect `LINE`.
-        val tokenFive = tokens.get(5);
-        if (tokenFive.getType() != Token.Type.LINE) {
-            return false;
+        val token2 = tokens.get(2);
+        if (token2.getType() != Token.Type.LINE) {
+            return new ImmutableTriple<>(
+                    false, NamedFunction.Type.CLI, tokens);
         }
 
         //   Would expect `INTERFACE`.
-        val tokenSix = tokens.get(6);
-        if (tokenSix.getType() != Token.Type.INTERFACE) {
-            return false;
+        val token3 = tokens.get(3);
+        if (token3.getType() != Token.Type.INTERFACE) {
+            return new ImmutableTriple<>(
+                    false, NamedFunction.Type.CLI, tokens);
         }
 
         //   Would expect `APPLICATION`.
-        val tokenSeven = tokens.get(7);
-        if (tokenSeven.getType() != Token.Type.APPLICATION) {
-            return false;
+        val token4 = tokens.get(4);
+        if (token4.getType() != Token.Type.APPLICATION) {
+            return new ImmutableTriple<>(
+                    false, NamedFunction.Type.CLI, tokens);
         }
 
         //   Would expect `FUNCTION`.
-        val tokenEight = tokens.get(8);
-        if (tokenEight.getType() != Token.Type.FUNCTION) {
-            return false;
+        val token5 =  tokens.get(5);
+        if (token5.getType() != Token.Type.FUNCTION) {
+            return new ImmutableTriple<>(
+                    false, NamedFunction.Type.CLI, tokens);
         }
 
+        remainingTokens = discardSixFrom(tokens);
+
+        return new ImmutableTriple<>(
+                true, NamedFunction.Type.CLI, remainingTokens);
+    }
+
+    /**  @return a {@link Triple} where: The left part holds whether the
+     * named function 'function receives clause' reduction can be
+     * applied or not. The middle part holds what the function receives,
+     * if anything. The right part holds the remaining tokens after this
+     * reduction is applied. */
+    public
+    Triple<Boolean, ExpressionType, List<Token>>
+    tryReduceNamedFunctionReceivesClause(final List<Token> tokens) {
+
+        val tokensSize = tokens.size();
+        forceAssert(tokensSize > 3);
+
+        boolean receivesNothingAtAll = false;
+        boolean receivesSomething = false;
+        ExpressionType whatReceives = new ExpressionTypeFactory().unresolved();
+
         //   Would expect `AND`.
-        val tokenNine = tokens.get(9);
-        if (tokenNine.getType() != Token.Type.AND) {
-            return false;
+        val token0 = tokens.get(0);
+        if (token0.getType() != Token.Type.AND) {
+            return new ImmutableTriple<>(false, whatReceives, tokens);
         }
 
         //   Would expect `RECEIVES`.
-        val tokenTen = tokens.get(10);
-        if (tokenTen.getType() != Token.Type.RECEIVES) {
-            return false;
+        val token1 = tokens.get(1);
+        if (token1.getType() != Token.Type.RECEIVES) {
+            return new ImmutableTriple<>(false, whatReceives, tokens);
         }
 
-        //   Would expect `NOTHING`.
-        val tokenEleven = tokens.get(11);
-        if (tokenEleven.getType() != Token.Type.NOTHING) {
-            return false;
+        //   Would expect `NOTHING` or `A`.
+        val token2 = tokens.get(2);
+        if (token2.getType() == Token.Type.NOTHING) {
+            receivesNothingAtAll = true;
+            whatReceives = new ExpressionTypeFactory().empty();
+        } else if (token2.getType() == Token.Type.A) {
+            receivesSomething = true;
+        } else {
+            return new ImmutableTriple<>(false, whatReceives, tokens);
         }
 
-        //   Would expect `AT`.
-        val tokenTwelve = tokens.get(12);
-        if (tokenTwelve.getType() != Token.Type.AT) {
-            return false;
-        }
+        if (receivesNothingAtAll) {
+            forceAssert(tokensSize > 4);
 
-        //   Would expect `ALL`.
-        val tokenThirteen = tokens.get(13);
-        if (tokenThirteen.getType() != Token.Type.ALL) {
-            return false;
+            //   Would expect `AT`.
+            val token3 = tokens.get(3);
+            if (token3.getType() != Token.Type.AT) {
+                return new ImmutableTriple<>(false, whatReceives, tokens);
+            }
+
+            //   Would expect `ALL`.
+            val token4 = tokens.get(4);
+            if (token4.getType() != Token.Type.ALL) {
+                return new ImmutableTriple<>(false, whatReceives, tokens);
+            }
+
+            final List<Token> remainingTokens = new ArrayList<>(tokensSize - 5);
+            for (int i = 5; i < tokensSize; i++) {
+                val someToken = tokens.get(i);
+                remainingTokens.add(someToken);
+            }
+
+            return new ImmutableTriple<>(true, whatReceives, remainingTokens);
+        } else {
+            forceAssert(receivesSomething);
+
+            //   Would expect `NATURAL`.
+            val token3 = tokens.get(3);
+            if (token3.getType() != Token.Type.NATURAL) {
+                return new ImmutableTriple<>(false, whatReceives, tokens);
+            }
+
+            whatReceives = new ExpressionTypeFactory().natural();
+
+            final List<Token> remainingTokens = discardFourFrom(tokens);
+
+            return new ImmutableTriple<>(true, whatReceives, remainingTokens);
         }
+    }
+
+    /**  @return a {@link Triple} where: The left part holds whether the
+     * named function 'function returns clause' reduction can be applied
+     * or not. The middle part holds what the function returns, if
+     * anything. The right part holds the remaining tokens after this
+     * reduction is applied. */
+    public
+    Triple<Boolean, ExpressionType, List<Token>>
+    tryReduceNamedFunctionReturnsClause(final List<Token> tokens) {
+
+        val tokensSize = tokens.size();
+        forceAssert(tokensSize > 3);
+
+        boolean returnsNothingAtAll = false;
+        boolean returnsSomething = false;
+        ExpressionType whatReturns = new ExpressionTypeFactory().unresolved();
 
         //   Would expect `AND`.
-        val tokenFourteen = tokens.get(14);
-        if (tokenFourteen.getType() != Token.Type.AND) {
-            return false;
+        val token0 = tokens.get(0);
+        if (token0.getType() != Token.Type.AND) {
+            return new ImmutableTriple<>(false, whatReturns, tokens);
         }
 
         //   Would expect `RETURNS`.
-        val token15 = tokens.get(15);
-        if (token15.getType() != Token.Type.RETURNS) {
-            return false;
+        val token1 = tokens.get(1);
+        if (token1.getType() != Token.Type.RETURNS) {
+            return new ImmutableTriple<>(false, whatReturns, tokens);
         }
 
-        //   Would expect `NOTHING`.
-        val token16 = tokens.get(16);
-        if (token16.getType() != Token.Type.NOTHING) {
-            return false;
+        //   Would expect `NOTHING` or `A`.
+        val token2 = tokens.get(2);
+        if (token2.getType() == Token.Type.NOTHING) {
+            returnsNothingAtAll = true;
+            whatReturns = new ExpressionTypeFactory().empty();
+        } else if (token2.getType() == Token.Type.A) {
+            returnsSomething = true;
+        } else {
+            return new ImmutableTriple<>(false, whatReturns, tokens);
         }
 
-        //   Would expect `AT`.
-        val token17 = tokens.get(17);
-        if (token17.getType() != Token.Type.AT) {
-            return false;
-        }
+        if (returnsNothingAtAll) {
+            forceAssert(tokensSize > 4);
 
-        //   Would expect `ALL`.
-        val token18 = tokens.get(18);
-        if (token18.getType() != Token.Type.ALL) {
-            return false;
-        }
+            //   Would expect `AT`.
+            val token3 = tokens.get(3);
+            if (token3.getType() != Token.Type.AT) {
+                return new ImmutableTriple<>(false, whatReturns, tokens);
+            }
 
-        //   Would expect `SO`.
-        val token19 = tokens.get(19);
-        if (token19.getType() != Token.Type.SO) {
-            return false;
-        }
+            //   Would expect `ALL`.
+            val token4 = tokens.get(4);
+            if (token4.getType() != Token.Type.ALL) {
+                return new ImmutableTriple<>(false, whatReturns, tokens);
+            }
 
-        //   Would expect `IT`.
-        val token20 = tokens.get(20);
-        if (token20.getType() != Token.Type.IT) {
-            return false;
-        }
+            final List<Token> remainingTokens = new ArrayList<>(tokensSize - 5);
+            for (int i = 5; i < tokensSize; i++) {
+                val someToken = tokens.get(i);
+                remainingTokens.add(someToken);
+            }
 
-        //   Would expect `CAUSES`.
-        val token21 = tokens.get(21);
-        if (token21.getType() != Token.Type.CAUSES) {
-            return false;
-        }
+            return new ImmutableTriple<>(true, whatReturns, remainingTokens);
+        } else {
+            forceAssert(returnsSomething);
 
-        //   Would expect `SIDE`.
-        val token22 = tokens.get(22);
-        if (token22.getType() != Token.Type.SIDE) {
-            return false;
-        }
+            //   Would expect `NATURAL`.
+            val token3 = tokens.get(3);
+            if (token3.getType() != Token.Type.NATURAL) {
+                return new ImmutableTriple<>(false, whatReturns, tokens);
+            }
 
-        //   Would expect `EFFECTS`.
-        val token23 = tokens.get(23);
-        if (token23.getType() != Token.Type.EFFECTS) {
-            return false;
-        }
+            whatReturns = new ExpressionTypeFactory().natural();
 
-        //   Would expect `AND`.
-        val token24 = tokens.get(24);
-        if (token24.getType() != Token.Type.AND) {
-            return false;
-        }
+            final List<Token> remainingTokens = discardFourFrom(tokens);
 
-        //   Would expect `EXECUTES`.
-        val token25 = tokens.get(25);
-        if (token25.getType() != Token.Type.EXECUTES) {
-            return false;
+            return new ImmutableTriple<>(true, whatReturns, remainingTokens);
         }
-
-        //   Would expect `STATEMENTS`.
-        val token26 = tokens.get(26);
-        if (token26.getType() != Token.Type.STATEMENTS) {
-            return false;
-        }
-
-        //   Would expect `SEQUENTIALLY`.
-        val token27 = tokens.get(27);
-        if (token27.getType() != Token.Type.SEQUENTIALLY) {
-            return false;
-        }
-
-        //   Would expect `AND`.
-        val token28 = tokens.get(28);
-        if (token28.getType() != Token.Type.AND) {
-            return false;
-        }
-
-        //   Would expect `DOES`.
-        val token29 = tokens.get(29);
-        if (token29.getType() != Token.Type.DOES) {
-            return false;
-        }
-
-        val nestedCallTokensSize = tokensSize - 30;
-        List<Token> nestedCallTokens = new ArrayList<>(nestedCallTokensSize);
-        for (int i = 0; i < nestedCallTokensSize; i++) {
-            nestedCallTokens.add(tokens.get(30 + i));
-        }
-
-        val canReduceFunctionBodyResults =
-                canReduceFunctionBody(nestedCallTokens);
-        val canReduceFunctionBody = canReduceFunctionBodyResults.getLeft();
-        forceAssert(canReduceFunctionBody);
-        val discardHowManyTokensToGetToFunctionTail =
-                canReduceFunctionBodyResults.getRight();
-        val tokensAfterFunctionBody = new ArrayList<Token>(
-                nestedCallTokensSize - discardHowManyTokensToGetToFunctionTail);
-        val limit = nestedCallTokensSize
-                - discardHowManyTokensToGetToFunctionTail;
-        for (int i = 0; i < limit; i++) {
-            val i0 = i + discardHowManyTokensToGetToFunctionTail;
-            val someToken = nestedCallTokens.get(i0);
-            tokensAfterFunctionBody.add(someToken);
-        }
-        return canReduceFunctionTail(
-                tokensAfterFunctionBody,
-                expectedIdentifierAtFunctionTail.toString());
     }
 
-    /**  @param tokens A list of tokens remaining to be processed.
+    private static List<Token> discardThreeFrom(final List<Token> tokens) {
+
+        val tokensSize = tokens.size();
+        final List<Token> remainingTokens = new ArrayList<>(tokensSize - 3);
+        for (int i = 3; i < tokensSize; i++) {
+            val someToken = tokens.get(i);
+            remainingTokens.add(someToken);
+        }
+        return remainingTokens;
+    }
+
+    private static List<Token> discardFourFrom(final List<Token> tokens) {
+
+        val tokensSize = tokens.size();
+        final List<Token> remainingTokens = new ArrayList<>(tokensSize - 4);
+        for (int i = 4; i < tokensSize; i++) {
+            val someToken = tokens.get(i);
+            remainingTokens.add(someToken);
+        }
+        return remainingTokens;
+    }
+
+    private static List<Token> discardSixFrom(final List<Token> tokens) {
+
+        val tokensSize = tokens.size();
+        final List<Token> remainingTokens = new ArrayList<>(tokensSize - 6);
+        for (int i = 6; i < tokensSize; i++) {
+            val someToken = tokens.get(i);
+            remainingTokens.add(someToken);
+        }
+        return remainingTokens;
+    }
+
+    /**  `java:S1452`: Remove usage of generic wildcard type.
+     *   @param tokens A list of tokens remaining to be processed.
+     *   @param pure Some particular stuff can be expected in a pure
+     * function (e.g. just an expression composed of other expressions
+     * or from an atom (e.g. a natural literal, a string literal...)),
+     * while entirely different stuff can be expected in a non pure
+     * function (e.g. console prints, new lines, sequential or parallel
+     * execution...).
+     *   @param singleStatement If not `pure`, `true` if there is only
+     * one statement, else `false`.
+     *   @param sequential If not `pure` and not `singleStatement`,
+     * `true` if statements are sequential, else `false`.
      *   @return A {@link Pair} holding whether can do a function body
      * reduction or not (at {@link Pair#getLeft()}) and, in case that is
      * true, how many tokens would that reduction consume (at {@link
      * Pair#getRight()}). */
-    public Pair<Boolean, Short> canReduceFunctionBody(
-            final List<Token> tokens) throws LanguageNotRecognizedException {
+    @SuppressWarnings({"java:S1452"}) public
+    Triple<Boolean, ? extends NamedFunctionBody, ? extends List<Token>>
+    tryReduceFunctionBody(
+            final List<Token> tokens, boolean pure, boolean singleStatement,
+            boolean sequential) throws LanguageNotRecognizedException {
+
+        return pure ?
+                tryReducePureFunctionBody(tokens) :
+                tryReduceNonPureFunctionBody(
+                        tokens, singleStatement, sequential);
+    }
+
+    public
+    Triple<Boolean, NamedFunctionBody, List<Token>>
+    tryReducePureFunctionBody(final List<Token> tokens) {
+        val tokensSize = tokens.size();
+        forceAssert(tokensSize > 0);
+        val token0 = tokens.get(0);
+        if (token0.getType() != Token.Type.RETURN) {
+            return new ImmutableTriple<>(false, null, null);
+        }
+        val nestedExpressionTokensSize = tokensSize - 1;
+        final List<Token> nestedExpressionTokens =
+                new ArrayList<>(nestedExpressionTokensSize);
+        for (int i = 0; i < nestedExpressionTokensSize; i++) {
+            val someToken = tokens.get(i + 1);
+            nestedExpressionTokens.add(someToken);
+        }
+        val tryReducePureExpressionResult =
+                tryReducePureExpression(nestedExpressionTokens);
+        val tryReducePureExpression = tryReducePureExpressionResult.getLeft();
+        forceAssert(tryReducePureExpression);
+        val pureExpression = tryReducePureExpressionResult.getMiddle();
+        val tokensAfterPureExpressionReduction =
+                tryReducePureExpressionResult.getRight();
+        val tryReduceWhereValueBindingClauses =
+                tryReduceWhereValueBindingClauses(
+                        tokensAfterPureExpressionReduction);
+        val canReduceWhereValueBindingClauses =
+                tryReduceWhereValueBindingClauses.getLeft();
+        if (canReduceWhereValueBindingClauses) {
+            val whereValueBindingClauses =
+                    tryReduceWhereValueBindingClauses.getMiddle();
+            val tokensAfterWhereValueBindingClauses =
+                    tryReduceWhereValueBindingClauses.getRight();
+            return new ImmutableTriple<>(
+                    true,
+                    NamedFunctionBody.fromPureExpression(
+                            pureExpression
+                    ).where(whereValueBindingClauses),
+                    tokensAfterWhereValueBindingClauses);
+        } else {
+            return new ImmutableTriple<>(
+                    true, NamedFunctionBody.fromPureExpression(pureExpression),
+                    tokensAfterPureExpressionReduction);
+        }
+    }
+
+    private
+    Triple<Boolean, ? extends Expression, ? extends List<Token>>
+    tryReducePureExpression(final List<Token> tokens) {
+        val tokensSize = tokens.size();
+        forceAssert(tokensSize > 1);
+        val token0 = tokens.get(0);
+        val token0Type = token0.getType();
+        if (token0Type == Token.Type.RETURN) {
+            val tokensForMaybeExpressionSize = tokensSize - 1;
+            val tokensForMaybeExpression =
+                    new ArrayList<Token>(tokensForMaybeExpressionSize);
+            for (int i = 0; i < tokensForMaybeExpressionSize; i++) {
+                tokensForMaybeExpression.add(tokens.get(i + 1));
+            }
+            val tryReducePureExpression =
+                    tryReducePureExpression(tokensForMaybeExpression);
+            val canReducePureExpression = tryReducePureExpression.getLeft();
+            if (canReducePureExpression) {
+                return new ImmutableTriple<>(
+                        true, tryReducePureExpression.getMiddle(),
+                        tryReducePureExpression.getRight());
+            }
+        } else {
+            forceAssert(token0Type == Token.Type.IDENTIFIER);
+            val tokensForMaybeExpressionSize = tokensSize - 1;
+            val tokensForMaybeExpression =
+                    new ArrayList<Token>(tokensForMaybeExpressionSize);
+            for (int i = 0; i < tokensForMaybeExpressionSize; i++) {
+                tokensForMaybeExpression.add(tokens.get(i + 1));
+            }
+            return new ImmutableTriple<>(
+                    true,
+                    IdentifierExpression.fromIdentifierToken(token0).makePure(),
+                    tokensForMaybeExpression);
+        }
+        return new ImmutableTriple<>(false, null, null);
+    }
+
+    /**  `java:S1452`: Remove usage of generic wildcard type.
+     *   @param tokens A list of tokens remaining to be processed.
+     *   @param singleStatement `true` if there is only one statement,
+     * else `false`.
+     *   @param sequential If not `singleStatement`, `true` if
+     * statements are sequential, else `false`.
+     *   @return A {@link Pair} holding whether can do a function body
+     * reduction or not (at {@link Pair#getLeft()}) and, in case that is
+     * true, how many tokens would that reduction consume (at {@link
+     * Pair#getRight()}). */
+    @SuppressWarnings({"java:S1452"}) public
+    Triple<Boolean, NamedFunctionBody, ? extends List<Token>>
+    tryReduceNonPureFunctionBody(
+            final List<Token> tokens, boolean singleStatement,
+            boolean sequential) throws LanguageNotRecognizedException {
 
         val tokensSize = tokens.size();
-        var canReduceOperationResult = canReduceOperation(tokens);
-        var canReduceOperation = canReduceOperationResult.getLeft();
-        if (!canReduceOperation) {
-            return new ImmutablePair<>(false, null);
+        Triple<
+            Boolean, ? extends Statement, List<Token>
+        > tryReduceStatementResult = tryReduceStatement(tokens);
+        boolean canReduceStatement = tryReduceStatementResult.getLeft();
+        if (!canReduceStatement) {
+            return new ImmutableTriple<>(false, null, null);
         }
-        var remainingTokens = canReduceOperationResult.getRight();
-        var remainingTokensSize = remainingTokens.size();
-        var canReduceAnOperationsConnectingClauseResult =
-                canReduceAnOperationsConnectingClause(remainingTokens);
-        var canReduceAnOperationsConnectingClause =
-                canReduceAnOperationsConnectingClauseResult.getLeft();
+        Statement statement = tryReduceStatementResult.getMiddle();
+        val statementsList = new ArrayList<Statement>(16);
+        statementsList.add(statement);
+        List<Token> remainingTokens = tryReduceStatementResult.getRight();
+        int remainingTokensSize = remainingTokens.size();
+        Triple<
+                Boolean, RunTimeInterleave, List<Token>
+        > tryReduceAnStatementsConnectingClauseResult =
+                tryReduceAnStatementsConnectingClause(remainingTokens);
+        boolean canReduceAnStatementsConnectingClause =
+                tryReduceAnStatementsConnectingClauseResult.getLeft();
         val expectedRunTimeInterleave =
-                canReduceAnOperationsConnectingClauseResult.getMiddle();
-        while (canReduceAnOperationsConnectingClause) {
+                tryReduceAnStatementsConnectingClauseResult.getMiddle();
+        while (canReduceAnStatementsConnectingClause) {
             remainingTokens =
-                    canReduceAnOperationsConnectingClauseResult.getRight();
-            canReduceOperationResult = canReduceOperation(remainingTokens);
-            canReduceOperation = canReduceOperationResult.getLeft();
-            if (!canReduceOperation) {
+                    tryReduceAnStatementsConnectingClauseResult.getRight();
+            tryReduceStatementResult = tryReduceStatement(remainingTokens);
+            canReduceStatement = tryReduceStatementResult.getLeft();
+            if (!canReduceStatement) {
                 throw new LanguageNotRecognizedException(FIXME);
             }
-            remainingTokens = canReduceOperationResult.getRight();
+            statement = tryReduceStatementResult.getMiddle();
+            statementsList.add(statement);
+            remainingTokens = tryReduceStatementResult.getRight();
             remainingTokensSize = remainingTokens.size();
-            canReduceAnOperationsConnectingClauseResult =
-                    canReduceAnOperationsConnectingClause(remainingTokens);
-            canReduceAnOperationsConnectingClause =
-                    canReduceAnOperationsConnectingClauseResult.getLeft();
-            if (canReduceAnOperationsConnectingClause) {
+            tryReduceAnStatementsConnectingClauseResult =
+                    tryReduceAnStatementsConnectingClause(remainingTokens);
+            canReduceAnStatementsConnectingClause =
+                    tryReduceAnStatementsConnectingClauseResult.getLeft();
+            if (canReduceAnStatementsConnectingClause) {
                 val actualRunTimeInterleave =
-                        canReduceAnOperationsConnectingClauseResult.getMiddle();
+                        tryReduceAnStatementsConnectingClauseResult.getMiddle();
                 forcedAssertion(expectedRunTimeInterleave ==
                         actualRunTimeInterleave);
             }
         }
 
-        //   No further operations? Any `where` value binding clauses?
+        //   No further statements? Any `where` value binding clauses?
 
-        val canReduceWhereValueBindingClausesResult =
-                canReduceWhereValueBindingClauses(remainingTokens);
+        val tryReduceWhereValueBindingClausesResult =
+                tryReduceWhereValueBindingClauses(remainingTokens);
         val canReduceWhereValueBindingClauses =
-                canReduceWhereValueBindingClausesResult.getLeft();
-        val howManyTokensInWhereValueBindingClauses =
-                canReduceWhereValueBindingClausesResult.getRight();
+                tryReduceWhereValueBindingClausesResult.getLeft();
+        final WhereValueBindings whereValueBindings;
         if (canReduceWhereValueBindingClauses) {
-            if (howManyTokensInWhereValueBindingClauses > 0) {
-                remainingTokens.subList(
-                        0, howManyTokensInWhereValueBindingClauses).clear();
-            }
-            remainingTokensSize = remainingTokens.size();
+            whereValueBindings =
+                    tryReduceWhereValueBindingClausesResult.getMiddle();
+            val tokensAfterWhereValueBindingClauses =
+                    tryReduceWhereValueBindingClausesResult.getRight();
+            remainingTokens = tokensAfterWhereValueBindingClauses;
+            remainingTokensSize = tokensAfterWhereValueBindingClauses.size();
+        } else {
+            whereValueBindings = null;
         }
 
         //   No [more] `where` value binding clauses? Assume the
@@ -386,43 +917,77 @@ import static org.minia.pangolin.util.Util.forcedAssertion;
         forcedAssertion(tokensSize < Short.MAX_VALUE + 1);
         forcedAssertion(remainingTokensSize < Short.MAX_VALUE + 1);
         forcedAssertion(tokensSize > remainingTokensSize);
-        return new ImmutablePair<>(
-                true, (short) (tokensSize - remainingTokensSize));
+
+        final Statements statements;
+        if (statementsList.size() == 1) {
+            forceAssert(singleStatement);
+            statements = Statements.single(statement);
+        } else {
+            forceAssert(!singleStatement);
+            if (sequential) {
+                statements = Statements.sequential(statementsList);
+            } else {
+                statements = Statements.parallel(statementsList);
+            }
+        }
+
+        return new ImmutableTriple<>(
+                true,
+                whereValueBindings == null ?
+                        NamedFunctionBody.fromStatements(statements) :
+                        NamedFunctionBody.fromStatementsAndWhereValueBindings(
+                                statements, whereValueBindings),
+                remainingTokens);
     }
 
-    /**  @return A {@link Pair}; where the right holds: the remaining
-     * tokens after the first operation reduction, if an operation
+    /**  <p>`java:S1452`: Remove usage of generic wildcard type.
+     *   @return A {@link Pair}; where the right holds: the remaining
+     * tokens after the first statement reduction, if a statement
      * reduction can be performed, else `null`; and the left holds the
-     * actual result of the operation (whether an operation reduction
+     * actual result of the statement (whether a statement reduction
      * can be performed or not. */
-    public Pair<Boolean, List<Token>> canReduceOperation(
-            final List<Token> tokens) {
+    @SuppressWarnings({"java:S1452"})
+    public Triple<Boolean, ? extends Statement, List<Token>>
+    tryReduceStatement(final List<Token> tokens) {
 
         val tokensSize = tokens.size();
         if (tokensSize < 2) {
-            return new ImmutablePair<>(false, null);
+            return new ImmutableTriple<>(false, null, null);
         }
         val token0 = tokens.get(0);
-        final List<Token> remainingTokens = new ArrayList<>(tokensSize - 1);
-        for (int i = 1; i < tokensSize; i++) {
-            val someToken = tokens.get(i);
-            remainingTokens.add(someToken);
-        }
         if (Token.Type.NEW == token0.getType()) {
-            return canReduceNewLineOperation(remainingTokens);
+            final List<Token> remainingTokens = new ArrayList<>(tokensSize - 1);
+            for (int i = 1; i < tokensSize; i++) {
+                val someToken = tokens.get(i);
+                remainingTokens.add(someToken);
+            }
+            return tryReduceNewLineStatement(remainingTokens);
         }
         if (Token.Type.PRINT == token0.getType()) {
-            return canReducePrintOperation(remainingTokens);
+            final List<Token> remainingTokens = new ArrayList<>(tokensSize - 1);
+            for (int i = 1; i < tokensSize; i++) {
+                val someToken = tokens.get(i);
+                remainingTokens.add(someToken);
+            }
+            return tryReducePrintStatement(remainingTokens);
         }
-        return new ImmutablePair<>(false, null);
+        if (Token.Type.EXECUTE == token0.getType()) {
+            final List<Token> remainingTokens = new ArrayList<>(tokensSize - 1);
+            for (int i = 1; i < tokensSize; i++) {
+                val someToken = tokens.get(i);
+                remainingTokens.add(someToken);
+            }
+            return tryReduceExecuteStatement(remainingTokens);
+        }
+        return new ImmutableTriple<>(false, null, null);
     }
 
-    public Pair<Boolean, List<Token>> canReduceNewLineOperation(
-            final List<Token> tokens) {
+    public Triple<Boolean, NewLineStatement, List<Token>>
+    tryReduceNewLineStatement(final List<Token> tokens) {
 
         val tokensSize = tokens.size();
         if (tokensSize < 1) {
-            return new ImmutablePair<>(false, null);
+            return new ImmutableTriple<>(false, null, null);
         }
         val token0 = tokens.get(0);
         final List<Token> remainingTokens = new ArrayList<>(tokensSize - 1);
@@ -431,20 +996,21 @@ import static org.minia.pangolin.util.Util.forcedAssertion;
             remainingTokens.add(someToken);
         }
         if (Token.Type.LINE == token0.getType()) {
-            return new ImmutablePair<>(true, remainingTokens);
+            return new ImmutableTriple<>(
+                    true, new NewLineStatement(), remainingTokens);
         }
-        return new ImmutablePair<>(false, null);
+        return new ImmutableTriple<>(false, null, null);
     }
 
     /**  <p>The `print` token has been already seen by the caller of
      * this, this one only has to check that what comes next can be
      * really printed. */
-    public Pair<Boolean, List<Token>> canReducePrintOperation(
+    public Triple<Boolean, PrintStatement, List<Token>> tryReducePrintStatement(
             final List<Token> tokens) {
 
         val tokensSize = tokens.size();
         if (tokensSize < 1) {
-            return new ImmutablePair<>(false, null);
+            return new ImmutableTriple<>(false, null, null);
         }
         val token0 = tokens.get(0);
         final List<Token> remainingTokens = new ArrayList<>(tokensSize - 1);
@@ -453,61 +1019,102 @@ import static org.minia.pangolin.util.Util.forcedAssertion;
             remainingTokens.add(someToken);
         }
         if (Token.Type.STRING_LITERAL == token0.getType()) {
-            return new ImmutablePair<>(true, remainingTokens);
+            return new ImmutableTriple<>(
+                    true, new PrintStatement(token0), remainingTokens);
         }
         if (Token.Type.IDENTIFIER == token0.getType()) {
             //   Semantic analysis out of scope at this point.
-            return new ImmutablePair<>(true, remainingTokens);
+            return new ImmutableTriple<>(
+                    true, new PrintStatement(token0), remainingTokens);
         }
-        return new ImmutablePair<>(false, null);
+        return new ImmutableTriple<>(false, null, null);
     }
 
-    public Pair<Boolean, Short> canReduceWhereValueBindingClauses(
-            final List<Token> tokens) {
+    /**  <p>The `execute` token has been already seen by the caller of
+     * this, this one only has to check that what comes next can be
+     * really executed. */
+    public Triple<Boolean, ExecuteStatement, List<Token>>
+    tryReduceExecuteStatement(final List<Token> tokens) {
 
-        val canReduceWhereValueBindingClauseResult =
-                canReduceWhereValueBindingClause(tokens);
+        val tokensSize = tokens.size();
+        if (tokensSize < 5) {
+            // `call function ident inner ident ends`
+            //  1    2        3
+            // `passing no arguments at all
+            //  4       5  6         7  8
+            return new ImmutableTriple<>(false, null, null);
+        }
+
+        //   Currently the only expressions that can follow the
+        // `execute` keyword are function call expressions
+        // (syntactically, semantically actually only non-pure function
+        // call expressions (that is, function calls that cause side
+        // effects or resort on some other functions which cause side
+        // effects)) can follow.
+
+        val token0 = tokens.get(0);
+
+        forceAssert(Token.Type.CALL == token0.getType());
+
+        val tryReduceFunctionCallExpressionResult =
+                tryReduceFunctionCall(tokens);
+        val canReduceFunctionCallExpression =
+                tryReduceFunctionCallExpressionResult.getLeft();
+        forceAssert(canReduceFunctionCallExpression);
+        val functionCallExpression =
+                tryReduceFunctionCallExpressionResult.getMiddle();
+        val remainingTokensAfterFunctionCallExpression =
+                tryReduceFunctionCallExpressionResult.getRight();
+
+        //   Semantic analysis out of scope at this point.
+        return new ImmutableTriple<>(
+                true, new ExecuteStatement(functionCallExpression),
+                remainingTokensAfterFunctionCallExpression);
+    }
+
+    public Triple<Boolean, WhereValueBindings, List<Token>>
+    tryReduceWhereValueBindingClauses(final List<Token> tokens) {
+
+        val tryReduceWhereValueBindingClauseResult =
+                tryReduceWhereValueBindingClause(tokens);
         val canReduceWhereValueBindingClause =
-                canReduceWhereValueBindingClauseResult.getLeft();
-        if (!canReduceWhereValueBindingClause) {
-            return new ImmutablePair<>(false, Short.MIN_VALUE);
-        } else {
-            val howManyTokensInWhereValueBindingClause =
-                    canReduceWhereValueBindingClauseResult.getRight();
-            val tokensSize = tokens.size();
-            val remainingTokensTargetSize =
-                    tokensSize - howManyTokensInWhereValueBindingClause;
-            val remainingTokens =
-                    new ArrayList<Token>(remainingTokensTargetSize);
-            for (int i = 0; i < remainingTokensTargetSize; i++) {
-                val someToken =
-                        tokens.get(i + howManyTokensInWhereValueBindingClause);
-                remainingTokens.add(someToken);
+                tryReduceWhereValueBindingClauseResult.getLeft();
+        if (canReduceWhereValueBindingClause) {
+            val firstWhereValueBinding =
+                    tryReduceWhereValueBindingClauseResult.getMiddle();
+            val tokensAfterWhereValueBindingClause =
+                    tryReduceWhereValueBindingClauseResult.getRight();
+            val tryReduceWhereValueBindingClausesResult =
+                    tryReduceWhereValueBindingClauses(
+                            tokensAfterWhereValueBindingClause);
+            val canReduceMoreWhereValueBindingClauses =
+                    tryReduceWhereValueBindingClausesResult.getLeft();
+            if (canReduceMoreWhereValueBindingClauses) {
+                val subsequentWhereValueBindings =
+                        tryReduceWhereValueBindingClausesResult.getMiddle();
+                val tokensAfterAllWhereValueBindings =
+                        tryReduceWhereValueBindingClausesResult.getRight();
+                return new ImmutableTriple<>(
+                        true, new WhereValueBindingsFactory().prepend(
+                                firstWhereValueBinding,
+                                subsequentWhereValueBindings),
+                        tokensAfterAllWhereValueBindings);
             }
-            val canReduceWhereValueBindingClausesResult =
-                    canReduceWhereValueBindingClauses(remainingTokens);
-            val canReduceWhereValueBindingClauses =
-                    canReduceWhereValueBindingClausesResult.getLeft();
-            if (canReduceWhereValueBindingClauses) {
-                val howMany = canReduceWhereValueBindingClauseResult.getRight();
-                return new ImmutablePair<>(
-                        true,
-                        (short) (howMany + howManyTokensInWhereValueBindingClause));
-            } else {
-                return new ImmutablePair<>(
-                        true, howManyTokensInWhereValueBindingClause);
-            }
+            return new ImmutableTriple<>(
+                    true, new WhereValueBindings(firstWhereValueBinding),
+                    tokensAfterWhereValueBindingClause);
         }
+        return new ImmutableTriple<>(false, null, null);
     }
 
-    public Pair<Boolean, Short> canReduceWhereValueBindingClause(
-            final List<Token> tokens) {
+    public Triple<Boolean, WhereValueBinding, List<Token>>
+    tryReduceWhereValueBindingClause(final List<Token> tokens) {
 
         val tokensSize = tokens.size();
         forcedAssertion(tokensSize > 0);
         val token0 = tokens.get(0);
         if (Token.Type.WHERE != token0.getType()) {
-            return new ImmutablePair<>(false, Short.MIN_VALUE);
+            return new ImmutableTriple<>(false, null, null);
         }
         // where identifier foo identifier ends is bound to [whatever]
         // 1     2                              3  4     5  6 7 8 ...
@@ -520,98 +1127,30 @@ import static org.minia.pangolin.util.Util.forcedAssertion;
         forcedAssertion(Token.Type.BOUND == token3.getType());
         val token4 = tokens.get(4);
         forcedAssertion(Token.Type.TO == token4.getType());
+
         val tokensToAdvanceNow = 5;
-        val remainingTokensTargetSize = tokensSize - tokensToAdvanceNow;
-        val remainingTokens = new ArrayList<Token>(remainingTokensTargetSize);
-        for (int i = 0; i < remainingTokensTargetSize; i++) {
+        val tokensForExpressionSize = tokensSize - tokensToAdvanceNow;
+        val tokensForExpression = new ArrayList<Token>(tokensForExpressionSize);
+        for (int i = 0; i < tokensForExpressionSize; i++) {
             val someToken = tokens.get(i + tokensToAdvanceNow);
-            remainingTokens.add(someToken);
+            tokensForExpression.add(someToken);
         }
-        val canReduceExpressionResult = canReduceExpression(remainingTokens);
-        val canReduceExpression = canReduceExpressionResult.getLeft();
+        val tryReduceExpressionResult =
+                tryReduceExpression(tokensForExpression);
+        val canReduceExpression = tryReduceExpressionResult.getLeft();
         if (canReduceExpression) {
-            val howManyTokens = canReduceExpressionResult.getRight();
-            forcedAssertion(remainingTokensTargetSize < Short.MAX_VALUE / 2);
-            return new ImmutablePair<>(true, (short) (howManyTokens + 5));
+            val expression = tryReduceExpressionResult.getMiddle();
+            val remainingTokens = tryReduceExpressionResult.getRight();
+            return new ImmutableTriple<>(
+                    true, new WhereValueBinding(token1, expression),
+                    remainingTokens);
         }
-        return new ImmutablePair<>(false, Short.MIN_VALUE);
+        return new ImmutableTriple<>(false, null, null);
     }
 
-    public Pair<Boolean, Short> canReduceExpression(final List<Token> tokens) {
-
-        val tokensSize = tokens.size();
-        if (tokensSize < 1) {
-            return new ImmutablePair<>(false, Short.MIN_VALUE);
-        }
-        val token0 = tokens.get(0);
-        if (Token.Type.NATURAL_LITERAL == token0.getType()) {  /* XXX replace for expression detection */
-            forcedAssertion(Token.Type.NATURAL_LITERAL == token0.getType());  /* XXX replace for expression detection */
-        } else if (Token.Type.IDENTIFIER == token0.getType()) {  /* XXX replace for expression detection */
-            forcedAssertion(Token.Type.IDENTIFIER == token0.getType());  /* XXX replace for expression detection */
-        } else {  /* XXX replace for expression detection */
-            forcedAssertion(Token.Type.CONDITIONAL == token0.getType());  /* XXX replace for expression detection */
-            val canReduceConditionalExpressionResult =  /* XXX replace for expression detection */
-                    canReduceConditionalExpression(tokens);  /* XXX replace for expression detection */
-            if (canReduceConditionalExpressionResult.getLeft()) {  /* XXX replace for expression detection */
-                return canReduceConditionalExpressionResult;  /* XXX replace for expression detection */
-            }  /* XXX replace for expression detection */
-        }  /* XXX replace for expression detection */
-        return new ImmutablePair<>(true, (short) 1);
-    }
-
-    public Pair<Boolean, Short> canReduceConditionalExpression(
-            final List<Token> tokens) {
-
-        val tokensSize = tokens.size();
-        if (tokensSize < 13) {
-            return new ImmutablePair<>(false, (short) 0);
-        }
-
-        val token0 = tokens.get(0);
-        if (Token.Type.CONDITIONAL != token0.getType()) {
-            return new ImmutablePair<>(false, (short) 0);
-        }
-
-        val token1 = tokens.get(1);
-        forceAssert(Token.Type.IF == token1.getType());
-
-        val token2 = tokens.get(2);
-        forceAssert(Token.Type.NATURAL_LITERAL == token2.getType());
-
-        val token3 = tokens.get(3);
-        forceAssert(Token.Type.IS == token3.getType());
-
-        val token4 = tokens.get(4);
-        forceAssert(Token.Type.LESS == token4.getType());
-
-        val token5 = tokens.get(5);
-        forceAssert(Token.Type.THAN == token5.getType());
-
-        val token6 = tokens.get(6);
-        forceAssert(Token.Type.NATURAL_LITERAL == token6.getType());
-
-        val token7 = tokens.get(7);
-        forceAssert(Token.Type.THEN == token7.getType());
-
-        val token8 = tokens.get(8);
-        forceAssert(Token.Type.NATURAL_LITERAL == token8.getType());
-
-        val token9 = tokens.get(9);
-        forceAssert(Token.Type.ELSE == token9.getType());
-
-        val token10 = tokens.get(10);
-        forceAssert(Token.Type.NATURAL_LITERAL == token10.getType());
-
-        val token11 = tokens.get(11);
-        forceAssert(Token.Type.CONDITIONAL == token11.getType());
-
-        val token12 = tokens.get(12);
-        forceAssert(Token.Type.ENDS == token12.getType());
-
-        return new ImmutablePair<>(true, (short) 13);
-    }
-
-    public boolean canReduceFunctionTail(
+    public
+    Pair<Boolean, List<Token>>
+    tryReduceFunctionTail(
             final List<Token> tokens, final String expectedFunctionName) {
 
         forcedAssertion(expectedFunctionName != null);
@@ -625,73 +1164,20 @@ import static org.minia.pangolin.util.Util.forcedAssertion;
         forcedAssertion(Token.Type.IDENTIFIER == token2.getType());
         val actualFunctionName = token2.getIdentifierName();
         forcedAssertion(expectedFunctionName.equals(actualFunctionName));
-        return true;
-    }
-
-    //@SuppressWarnings({"java:S1126", "java:S1134"}) /* Return of boolean expressions should not be wrapped into an "if-then-else" statement. */ /* Track uses of "FIX-ME" tags (without the dash). */
-    public boolean canReduceApplication(final List<Token> tokens) {
-
-        val tokensSize = tokens.size();
-        // application identifier hello, world identifier ends
-        // 1           2
-        // is a command line interface application
-        // 3  4 5       6    7         8
-        // and the entry point is function identifier main identifier ends
-        // 9   10  11    12    13 14       15
-        // end application identifier hello, world identifier ends
-        // 16  17          18
-        if (tokensSize < 18) {
-            return false;
+        val remainingTokensSize = tokensSize - 3;
+        final List<Token> remainingTokens =
+                new ArrayList<>(remainingTokensSize);
+        for (int i = 0; i < remainingTokensSize; i++) {
+            val token = tokens.get(i + 3);
+            remainingTokens.add(token);
         }
-
-        val token0 = tokens.get(0);
-        forcedAssertion(Token.Type.APPLICATION == token0.getType());
-        val token1 = tokens.get(1);
-        forcedAssertion(Token.Type.IDENTIFIER == token1.getType());
-        val firstApplicationName = token1.getIdentifierName();
-        val token2 = tokens.get(2);
-        forcedAssertion(Token.Type.IS == token2.getType());
-        val token3 = tokens.get(3);
-        forcedAssertion(Token.Type.A == token3.getType());
-        val token4 = tokens.get(4);
-        forcedAssertion(Token.Type.COMMAND == token4.getType());
-        val token5 = tokens.get(5);
-        forcedAssertion(Token.Type.LINE == token5.getType());
-        val token6 = tokens.get(6);
-        forcedAssertion(Token.Type.INTERFACE == token6.getType());
-        val token7 = tokens.get(7);
-        forcedAssertion(Token.Type.APPLICATION == token7.getType());
-        val token8 = tokens.get(8);
-        forcedAssertion(Token.Type.AND == token8.getType());
-        val token9 = tokens.get(9);
-        forcedAssertion(Token.Type.THE == token9.getType());
-        val token10 = tokens.get(10);
-        forcedAssertion(Token.Type.ENTRY == token10.getType());
-        val token11 = tokens.get(11);
-        forcedAssertion(Token.Type.POINT == token11.getType());
-        val token12 = tokens.get(12);
-        forcedAssertion(Token.Type.IS == token12.getType());
-        val token13 = tokens.get(13);
-        forcedAssertion(Token.Type.FUNCTION == token13.getType());
-        val token14 = tokens.get(14);
-        forcedAssertion(Token.Type.IDENTIFIER == token14.getType());
-        val entryPointFunctionName = token14.getIdentifierName();
-        forceAssert(entryPointFunctionName != null);
-        val token15 = tokens.get(15);
-        forcedAssertion(Token.Type.END == token15.getType());
-        val token16 = tokens.get(16);
-        forcedAssertion(Token.Type.APPLICATION == token16.getType());
-        val token17 = tokens.get(17);
-        forcedAssertion(Token.Type.IDENTIFIER == token17.getType());
-        val secondApplicationName = token17.getIdentifierName();
-        forcedAssertion(firstApplicationName.equals(secondApplicationName));
-        return true;
+        return new ImmutablePair<>(true, remainingTokens);
     }
 
-    /**  <p>Expects either `and OPERATION [...]` or `and then
-     * OPERATION` */
-    public Triple<Boolean, Operations.RunTimeInterleave, List<Token>>
-    canReduceAnOperationsConnectingClause(final List<Token> tokens) {
+    /**  <p>Expects either `and STATEMENT [...]` or `and then
+     * STATEMENT` */
+    public Triple<Boolean, Statements.RunTimeInterleave, List<Token>>
+    tryReduceAnStatementsConnectingClause(final List<Token> tokens) {
 
         val tokensSize = tokens.size();
         forcedAssertion(tokensSize > 0);
@@ -709,7 +1195,7 @@ import static org.minia.pangolin.util.Util.forcedAssertion;
                 remainingTokens.add(someToken);
             }
             return new ImmutableTriple<>(
-                    true, Operations.RunTimeInterleave.SEQUENTIAL,
+                    true, Statements.RunTimeInterleave.SEQUENTIAL,
                     remainingTokens);
         } else {
             remainingTokens = new ArrayList<>(tokensSize - 1);
@@ -718,13 +1204,13 @@ import static org.minia.pangolin.util.Util.forcedAssertion;
                 remainingTokens.add(someToken);
             }
             return new ImmutableTriple<>(
-                    true, Operations.RunTimeInterleave.PARALLEL,
+                    true, Statements.RunTimeInterleave.PARALLEL,
                     remainingTokens);
         }
     }
 
-    //@SuppressWarnings({"java:S1126", "java:S1134"}) /* Return of boolean expressions should not be wrapped into an "if-then-else" statement. */ /* Track uses of "FIX-ME" tags (without the dash). */
-    public boolean canReduceExecutionRequest(final List<Token> tokens) {
+    public Triple<Boolean, ExecutionRequest, List<Token>>
+    tryReduceExecutionRequest(final List<Token> tokens) {
 
         val tokensSize = tokens.size();
         // run command line interface application
@@ -732,11 +1218,13 @@ import static org.minia.pangolin.util.Util.forcedAssertion;
         // identifier hello, world identifier ends
         // 6
         if (tokensSize < 6) {
-            return false;
+            return new ImmutableTriple<>(false, null, null);
         }
 
         val token0 = tokens.get(0);
-        forcedAssertion(Token.Type.RUN == token0.getType());
+        if (Token.Type.RUN != token0.getType()) {
+            return new ImmutableTriple<>(false, null, null);
+        }
         val token1 = tokens.get(1);
         forcedAssertion(Token.Type.COMMAND == token1.getType());
         val token2 = tokens.get(2);
@@ -747,152 +1235,63 @@ import static org.minia.pangolin.util.Util.forcedAssertion;
         forcedAssertion(Token.Type.APPLICATION == token4.getType());
         val token5 = tokens.get(5);
         forcedAssertion(Token.Type.IDENTIFIER == token5.getType());
-        return true;
-    }
 
-    public Pair<ParseTree, List<Token>> reduce(
-            final List<Token> tokens, final Reduction reduction)
-                    throws LanguageNotRecognizedException {
-
-        if (reduction == Reduction.NAMED_FUNCTION) {
-
-            val reduceFunctionResult = reduceFunction(tokens);
-            return new ImmutablePair<>(
-                    new ParseTree(reduceFunctionResult.getLeft()),
-                    reduceFunctionResult.getRight());
-        } else if (reduction == Reduction.APPLICATION) {
-
-            val reduceApplicationResult = reduceApplication(tokens);
-            return new ImmutablePair<>(
-                    new ParseTree(reduceApplicationResult.getLeft()),
-                    reduceApplicationResult.getRight());
-        } else {
-            forcedAssertion(reduction == Reduction.EXECUTION_REQUEST);
-
-            val reduceExecutionRequestResult =
-                    reduceExecutionRequest(tokens);
-            return new ImmutablePair<>(
-                    new ParseTree(
-                            reduceExecutionRequestResult.getLeft()),
-                    reduceExecutionRequestResult.getRight());
+        val remainingTokensSize = tokensSize - 6;
+        final List<Token> remainingTokens =
+                new ArrayList<>(remainingTokensSize);
+        for (int i = 0; i < remainingTokensSize; i++) {
+            val token = tokens.get(i + 6);
+            remainingTokens.add(token);
         }
+
+        return new ImmutableTriple<>(
+                true, new ExecutionRequest(token5.getIdentifierName()),
+                remainingTokens);
     }
 
-    public Pair<NamedFunction, List<Token>> reduceFunction(
-            final List<Token> tokens) throws LanguageNotRecognizedException {
+    private enum ReceiveOrReturn { RECEIVE, RETURN; }
 
-        val tokensAfterFunctionHeadReduction =
-                reduceFunctionHeadBeginning(tokens);
-        val expectedFunctionNameToken =
-                tokensAfterFunctionHeadReduction.getLeft();
-        val expectedFunctionName =
-                expectedFunctionNameToken.getIdentifierName();
-        val tokensAfterReceivesClauseReduction = reduceFunctionReceivesClause(
-                tokensAfterFunctionHeadReduction.getRight());
-        val tokensAfterReturnsClauseReduction = reduceFunctionReturnsClause(
-                tokensAfterReceivesClauseReduction);
-        val tokensAfterSideEffectsClauseReduction =
-                reduceFunctionSideEffectsClause(
-                        tokensAfterReturnsClauseReduction);
-        val tokensAfterInterleavingModeClause = reduceInterleavingModeClause(
-                tokensAfterSideEffectsClauseReduction);
-        val tokensAfterAndDoesClauseReduction = reduceFunctionAndDoesClause(
-                tokensAfterInterleavingModeClause);
-        val reduceFunctionBodyClauseReturnedPair = reduceFunctionBodyClause(
-                tokensAfterAndDoesClauseReduction);
-        val functionOperations =
-                reduceFunctionBodyClauseReturnedPair.getLeft();
-        val functionWhereClauses =
-                reduceFunctionBodyClauseReturnedPair.getMiddle();
-        val remainingTokensAfterFunctionBody =
-                reduceFunctionBodyClauseReturnedPair.getRight();
-        val remainingTokensAfterFunctionReduction = reduceFunctionTail(
-                remainingTokensAfterFunctionBody, expectedFunctionName);
-        val functionName = expectedFunctionName;
-        return new ImmutablePair<>(
-                new NamedFunction(
-                        functionName, functionOperations, functionWhereClauses),
-                remainingTokensAfterFunctionReduction);
+    public List<Token> reduceFunctionReceivesOrReturnsClause(
+            final List<Token> tokens,
+            final ReceiveOrReturn receiveOrReturn) {
+
+        val tokensSize = tokens.size();
+        forcedAssertion(tokensSize > 5);
+        val token0 = tokens.get(0);
+        forcedAssertion(token0.getType() == Token.Type.AND);
+        val token1 = tokens.get(1);
+        if (ReceiveOrReturn.RECEIVE == receiveOrReturn) {
+            forcedAssertion(token1.getType() == Token.Type.RECEIVES);
+        } else {
+            forcedAssertion(token1.getType() == Token.Type.RETURNS);
+        }
+
+        val token2 = tokens.get(2);
+        forcedAssertion(token2.getType() == Token.Type.NOTHING);
+        val token3 = tokens.get(3);
+        forcedAssertion(token3.getType() == Token.Type.AT);
+        val token4 = tokens.get(4);
+        forcedAssertion(token4.getType() == Token.Type.ALL);
+
+        final List<Token> returning = new ArrayList<>(tokensSize - 5);
+        for (int i = 0; i < tokensSize - 5; i++) {
+            returning.add(tokens.get(i + 5));
+        }
+        return returning;
     }
 
-    /**  @return A {@link Pair} where the left side holds the name of
-     * the function, expected to be found later as well, and for that
-     * reason is returned; and the right side holds the reduced list of
-     * tokens. */
-    public Pair<Token, List<Token>> reduceFunctionHeadBeginning(
+    public List<Token> reduceFunctionReceivesClause(
             final List<Token> tokens) {
 
-        val tokensSize = tokens.size();
-        forcedAssertion(tokensSize > 9);
-        val token0 = tokens.get(0);
-        forcedAssertion(token0.getType() == Token.Type.FUNCTION);
-        val token1 = tokens.get(1);
-        forcedAssertion(token1.getType() == Token.Type.IDENTIFIER);
-        val token2 = tokens.get(2);
-        forcedAssertion(token2.getType() == Token.Type.IS);
-        val token3 = tokens.get(3);
-        forcedAssertion(token3.getType() == Token.Type.A);
-        val token4 = tokens.get(4);
-        forcedAssertion(token4.getType() == Token.Type.COMMAND);
-        val token5 = tokens.get(5);
-        forcedAssertion(token5.getType() == Token.Type.LINE);
-        val token6 = tokens.get(6);
-        forcedAssertion(token6.getType() == Token.Type.INTERFACE);
-        val token7 = tokens.get(7);
-        forcedAssertion(token7.getType() == Token.Type.APPLICATION);
-        val token8 = tokens.get(8);
-        forcedAssertion(token8.getType() == Token.Type.FUNCTION);
-        final List<Token> returningRight = new ArrayList<>(tokensSize - 9);
-        for (int i = 0; i < tokensSize - 9; i++) {
-            returningRight.add(tokens.get(i + 9));
-        }
-        return new ImmutablePair<>(token1, returningRight);
+        return reduceFunctionReceivesOrReturnsClause(
+                tokens, ReceiveOrReturn.RECEIVE);
     }
 
-    public List<Token> reduceFunctionReceivesClause(final List<Token> tokens) {
+    public List<Token> reduceFunctionReturnsClause(
+            final List<Token> tokens) {
 
-        val tokensSize = tokens.size();
-        forcedAssertion(tokensSize > 5);
-        val token0 = tokens.get(0);
-        forcedAssertion(token0.getType() == Token.Type.AND);
-        val token1 = tokens.get(1);
-        forcedAssertion(token1.getType() == Token.Type.RECEIVES);
-
-        val token2 = tokens.get(2);
-        forcedAssertion(token2.getType() == Token.Type.NOTHING);
-        val token3 = tokens.get(3);
-        forcedAssertion(token3.getType() == Token.Type.AT);
-        val token4 = tokens.get(4);
-        forcedAssertion(token4.getType() == Token.Type.ALL);
-
-        final List<Token> returning = new ArrayList<>(tokensSize - 5);
-        for (int i = 0; i < tokensSize - 5; i++) {
-            returning.add(tokens.get(i + 5));
-        }
-        return returning;
-    }
-
-    public List<Token> reduceFunctionReturnsClause(final List<Token> tokens) {
-
-        val tokensSize = tokens.size();
-        forcedAssertion(tokensSize > 5);
-        val token0 = tokens.get(0);
-        forcedAssertion(token0.getType() == Token.Type.AND);
-        val token1 = tokens.get(1);
-        forcedAssertion(token1.getType() == Token.Type.RETURNS);
-
-        val token2 = tokens.get(2);
-        forcedAssertion(token2.getType() == Token.Type.NOTHING);
-        val token3 = tokens.get(3);
-        forcedAssertion(token3.getType() == Token.Type.AT);
-        val token4 = tokens.get(4);
-        forcedAssertion(token4.getType() == Token.Type.ALL);
-
-        final List<Token> returning = new ArrayList<>(tokensSize - 5);
-        for (int i = 0; i < tokensSize - 5; i++) {
-            returning.add(tokens.get(i + 5));
-        }
-        return returning;
+        return reduceFunctionReceivesOrReturnsClause(
+                tokens, ReceiveOrReturn.RETURN);
     }
 
     public List<Token> reduceFunctionSideEffectsClause(
@@ -953,16 +1352,16 @@ import static org.minia.pangolin.util.Util.forcedAssertion;
     }
 
     public
-    Triple<Operations, WhereValueBindings, List<Token>>
+    Triple<Statements, WhereValueBindings, List<Token>>
     reduceFunctionBodyClause(final List<Token> tokens)
             throws LanguageNotRecognizedException {
 
-        val reduceOperationsResult = reduceOperations(tokens);
-        val operationsReduced = reduceOperationsResult.getLeft();
-        val remainingTokensAfterOperationsReduction =
-                reduceOperationsResult.getRight();
+        val reduceStatementsResult = reduceStatements(tokens);
+        val statementsReduced = reduceStatementsResult.getLeft();
+        val remainingTokensAfterStatementsReduction =
+                reduceStatementsResult.getRight();
         val tryReduceWhereValueBindingsResult = tryReduceWhereValueBindings(
-                remainingTokensAfterOperationsReduction);
+                remainingTokensAfterStatementsReduction);
         val reducedWhereValueBindings =
                 tryReduceWhereValueBindingsResult.getLeft();
         final WhereValueBindings whereValueBindings;
@@ -974,69 +1373,69 @@ import static org.minia.pangolin.util.Util.forcedAssertion;
         } else {
             whereValueBindings = null;
             remainingTokensAfterFunctionBody =
-                    remainingTokensAfterOperationsReduction;
+                    remainingTokensAfterStatementsReduction;
         }
         return new ImmutableTriple<>(
-                operationsReduced, whereValueBindings,
+                statementsReduced, whereValueBindings,
                 remainingTokensAfterFunctionBody);
     }
 
-    public Pair<Operations, List<Token>> reduceOperations(
+    public Pair<Statements, List<Token>> reduceStatements(
             final List<Token> tokens) throws LanguageNotRecognizedException {
 
-        val operations = new ArrayList<Operation>(4 /* Just a random guess. */);
-        var operationReductionResult = reduceOperation(tokens);
-        var operation = operationReductionResult.getLeft();
-        var remainingTokens = operationReductionResult.getRight();
+        val statements = new ArrayList<Statement>(4 /* Just a random guess. */);
+        Pair<Statement, List<Token>> statementReductionResult =
+                reduceStatement(tokens);
+        Statement statement = statementReductionResult.getLeft();
+        List<Token> remainingTokens = statementReductionResult.getRight();
         Triple<Boolean, List<Token>, RunTimeInterleave>
-        tryReduceOperationsConnectiveResult;
+        tryReduceStatementsConnectiveResult;
         try {
-            tryReduceOperationsConnectiveResult = tryReduceOperationsConnective(
+            tryReduceStatementsConnectiveResult = tryReduceStatementsConnective(
                     remainingTokens, RunTimeInterleave.UNKNOWN);
         } catch (final LanguageNotRecognizedException lnre) {
             /* XXX never entered here! this block can only be entered when not passing an unknown run time interleave. */
             log.severe(lnre.toString());
             throw lnre;
         }
-        var connectiveFoundAndReduced =
-                tryReduceOperationsConnectiveResult.getLeft();
+        boolean connectiveFoundAndReduced =
+                tryReduceStatementsConnectiveResult.getLeft();
         final RunTimeInterleave runTimeInterleave;
         if (connectiveFoundAndReduced) {
-            operations.add(operation);
-            runTimeInterleave =
-                    tryReduceOperationsConnectiveResult.getRight();
-            remainingTokens = tryReduceOperationsConnectiveResult.getMiddle();
+            statements.add(statement);
+            runTimeInterleave = tryReduceStatementsConnectiveResult.getRight();
+            remainingTokens = tryReduceStatementsConnectiveResult.getMiddle();
         } else {
             return new ImmutablePair<>(
-                    Operations.single(operation), remainingTokens);
+                    Statements.single(statement), remainingTokens);
         }
 
         do {
-            operationReductionResult = reduceOperation(remainingTokens);
-            operation = operationReductionResult.getLeft();
-            operations.add(operation);
-            remainingTokens = operationReductionResult.getRight();
+            statementReductionResult = reduceStatement(remainingTokens);
+            statement = statementReductionResult.getLeft();
+            statements.add(statement);
+            remainingTokens = statementReductionResult.getRight();
             try {
-                tryReduceOperationsConnectiveResult =
-                        tryReduceOperationsConnective(
+                tryReduceStatementsConnectiveResult =
+                        tryReduceStatementsConnective(
                                 remainingTokens, runTimeInterleave);
             } catch (final LanguageNotRecognizedException lnre) {
                 log.severe(lnre.toString());
                 throw lnre;
             }
             connectiveFoundAndReduced =
-                    tryReduceOperationsConnectiveResult.getLeft();
+                    tryReduceStatementsConnectiveResult.getLeft();
             if (connectiveFoundAndReduced) {
-                remainingTokens = tryReduceOperationsConnectiveResult.getMiddle();
+                remainingTokens = tryReduceStatementsConnectiveResult.getMiddle();
             } else {
                 if (runTimeInterleave == RunTimeInterleave.PARALLEL) {
                     return new ImmutablePair<>(
-                            Operations.parallel(operations), remainingTokens);
+                            Statements.parallel(statements), remainingTokens);
                 } else {
                     forcedAssertion(
                             runTimeInterleave == RunTimeInterleave.SEQUENTIAL);
                     return new ImmutablePair<>(
-                            Operations.sequential(operations), remainingTokens);
+                            Statements.sequential(statements), remainingTokens);
                 }
             }
         } while (!remainingTokens.isEmpty());
@@ -1044,21 +1443,21 @@ import static org.minia.pangolin.util.Util.forcedAssertion;
         throw new IllegalStateException("illegal state reached?");
     }
 
-    public Pair<Operation, List<Token>> reduceOperation(
+    public Pair<Statement, List<Token>> reduceStatement(
             final List<Token> tokens) {
 
         val tokensSize = tokens.size();
         forcedAssertion(tokensSize > 0);
         val token0 = tokens.get(0);
         if (Token.Type.PRINT == token0.getType()) {
-            return reducePrintOperation(tokens);
+            return reducePrintStatement(tokens);
         } else {
             forcedAssertion(Token.Type.NEW == token0.getType());
-            return reduceNewLineOperation(tokens);
+            return reduceNewLineStatement(tokens);
         }
     }
 
-    public Pair<Operation, List<Token>> reducePrintOperation(
+    public Pair<Statement, List<Token>> reducePrintStatement(
             final List<Token> tokens) {
 
         val tokensSize = tokens.size();
@@ -1073,16 +1472,16 @@ import static org.minia.pangolin.util.Util.forcedAssertion;
             forcedAssertion(Token.Type.STRING_LITERAL == token1.getType());
         }
 
-        final Operation operation = new PrintOperation(token1);
+        final Statement statement = new PrintStatement(token1);
         final List<Token> remainingTokens = new ArrayList<>(tokensSize - 2);
         for (int i = 0; i < tokensSize - 2; i++) {
             val someToken = tokens.get(i + 2);
             remainingTokens.add(someToken);
         }
-        return new ImmutablePair<>(operation, remainingTokens);
+        return new ImmutablePair<>(statement, remainingTokens);
     }
 
-    public Pair<Operation, List<Token>> reduceNewLineOperation(
+    public Pair<Statement, List<Token>> reduceNewLineStatement(
             final List<Token> tokens) {
 
         val tokensSize = tokens.size();
@@ -1092,18 +1491,18 @@ import static org.minia.pangolin.util.Util.forcedAssertion;
         val token1 = tokens.get(1);
         forcedAssertion(Token.Type.LINE == token1.getType());
 
-        final Operation operation = new NewLineOperation();
+        final Statement statement = new NewLineStatement();
         final List<Token> remainingTokens = new ArrayList<>(tokensSize - 2);
         for (int i = 0; i < tokensSize - 2; i++) {
             val someToken = tokens.get(i + 2);
             remainingTokens.add(someToken);
         }
-        return new ImmutablePair<>(operation, remainingTokens);
+        return new ImmutablePair<>(statement, remainingTokens);
     }
 
     public
     Triple<Boolean, List<Token>, RunTimeInterleave>
-    tryReduceOperationsConnective(
+    tryReduceStatementsConnective(
             final List<Token> tokens,
             final RunTimeInterleave expectedRunTimeInterleave)
                     throws LanguageNotRecognizedException {
@@ -1120,12 +1519,12 @@ import static org.minia.pangolin.util.Util.forcedAssertion;
         }
         forcedAssertion(Token.Type.AND == token0.getType());
         if (anyInterleavingWillDo) {
-            return tryReduceOperationsConnectiveAnyInterleavingWillDo(tokens);
+            return tryReduceStatementsConnectiveAnyInterleavingWillDo(tokens);
         }
 
         val token1 = tokens.get(1);
         if (Token.Type.THEN == token1.getType()) {
-            return tryReduceOperationsSequentialConnective(
+            return tryReduceStatementsSequentialConnective(
                     tokens, expectedRunTimeInterleave);
         } else {
             if (RunTimeInterleave.PARALLEL == expectedRunTimeInterleave) {
@@ -1144,7 +1543,7 @@ import static org.minia.pangolin.util.Util.forcedAssertion;
 
     public
     Triple<Boolean, List<Token>, RunTimeInterleave>
-    tryReduceOperationsConnectiveAnyInterleavingWillDo(
+    tryReduceStatementsConnectiveAnyInterleavingWillDo(
             final List<Token> tokens) {
 
         val tokensSize = tokens.size();
@@ -1173,7 +1572,7 @@ import static org.minia.pangolin.util.Util.forcedAssertion;
 
     public
     Triple<Boolean, List<Token>, RunTimeInterleave>
-    tryReduceOperationsSequentialConnective(
+    tryReduceStatementsSequentialConnective(
             final List<Token> tokens,
             final RunTimeInterleave expectedRunTimeInterleave)
                     throws LanguageNotRecognizedException {
@@ -1197,7 +1596,7 @@ import static org.minia.pangolin.util.Util.forcedAssertion;
     tryReduceWhereValueBindings(final List<Token> tokens) {
 
         boolean whereValueBindingFound;
-        var remainingTokens = tokens;
+        List<Token> remainingTokens = tokens;
         val whereValueBindings =
                 new ArrayList<WhereValueBinding>(4 /* Maybe more than 4... */);
         WhereValueBinding whereValueBinding;
@@ -1277,9 +1676,12 @@ import static org.minia.pangolin.util.Util.forcedAssertion;
                     true, IdentifierExpression.fromIdentifierToken(token0),
                     remainingTokens);
         }
-        forceAssert(Token.Type.CONDITIONAL == token0.getType());
-        forceAssert(tokensSize > 8);
-        return tryReduceConditionalExpression(tokens);
+        if (Token.Type.CONDITIONAL == token0.getType()) {
+            forceAssert(tokensSize > 8);
+            return tryReduceConditionalExpression(tokens);
+        }
+        forceAssert(Token.Type.CALL == token0.getType());
+        return tryReduceFunctionCall(tokens);
     }
 
     @SuppressWarnings({"java:S1452"})  // Remove generic wildcard type.
@@ -1380,6 +1782,41 @@ import static org.minia.pangolin.util.Util.forcedAssertion;
                 true, new LessThanCondition(token0, token4), remainingTokens);
     }
 
+    @SuppressWarnings({"java:S1452"})  // Remove generic wildcard type.
+    public
+    Triple<Boolean, FunctionCallExpression, ? extends List<Token>>
+    tryReduceFunctionCall(final List<Token> tokens) {
+        val tokensSize = tokens.size();
+        /*   `call function ID passing no arguments at all` has a min
+         * length of 8 */
+        forceAssert(tokensSize > 7);
+        val token0 = tokens.get(0);
+        forceAssert(token0.getType() == Token.Type.CALL);
+        val token1 = tokens.get(1);
+        forceAssert(token1.getType() == Token.Type.FUNCTION);
+        val token2 = tokens.get(2);
+        forceAssert(token2.getType() == Token.Type.IDENTIFIER);
+        val token3 = tokens.get(3);
+        forceAssert(token3.getType() == Token.Type.PASSING);
+        val token4 = tokens.get(4);
+        forceAssert(token4.getType() == Token.Type.NO);
+        val token5 = tokens.get(5);
+        forceAssert(token5.getType() == Token.Type.ARGUMENTS);
+        val token6 = tokens.get(6);
+        forceAssert(token6.getType() == Token.Type.AT);
+        val token7 = tokens.get(7);
+        forceAssert(token7.getType() == Token.Type.ALL);
+        val remainingTokensSize = tokensSize - 8;
+        val remainingTokens = new ArrayList<Token>(remainingTokensSize);
+        for (int i = 0; i < remainingTokensSize; i++) {
+            remainingTokens.add(tokens.get(i + 8));
+        }
+        return new ImmutableTriple<>(
+                true,
+                FunctionCallExpression.fromThinAir(),
+                remainingTokens);
+    }
+
     public List<Token> reduceFunctionTail(
             final List<Token> tokens,
             final CharSequence expectedFunctionName) {
@@ -1403,18 +1840,22 @@ import static org.minia.pangolin.util.Util.forcedAssertion;
         return returning;
     }
 
-    public Pair<Application, List<Token>> reduceApplication(
+    public Triple<Boolean, Application, List<Token>> tryReduceApplication(
             final List<Token> tokens) {
 
-        val tokensAfterApplicationHeadReduction =
-                reduceApplicationHead(tokens);
+        val tryReduceApplicationHeadResult = tryReduceApplicationHead(tokens);
+        val canReduceApplicationHead = tryReduceApplicationHeadResult.getLeft();
+        if (!canReduceApplicationHead) {
+            return new ImmutableTriple<>(false, null, null);
+        }
         val expectedApplicationNameTokenFirstPosition =
-                tokensAfterApplicationHeadReduction.getLeft();
+                tryReduceApplicationHeadResult.getMiddle();
+        val tokensAfterApplicationHead =
+                tryReduceApplicationHeadResult.getRight();
         val expectedApplicationNameTokenFirstPositionCharSequence =
                 expectedApplicationNameTokenFirstPosition.getIdentifierName();
         val reduceApplicationEntryPointClauseResults =
-                reduceApplicationEntryPointClause(
-                        tokensAfterApplicationHeadReduction.getRight());
+                reduceApplicationEntryPointClause(tokensAfterApplicationHead);
         val entryPointNamedFunctionNameToken =
                 reduceApplicationEntryPointClauseResults.getLeft();
         val entryPointNamedFunctionName =
@@ -1432,7 +1873,8 @@ import static org.minia.pangolin.util.Util.forcedAssertion;
                         expectedApplicationNameSecondPositionCharSequence));
         val applicationName =
                 expectedApplicationNameTokenFirstPositionCharSequence;
-        return new ImmutablePair<>(
+        return new ImmutableTriple<>(
+                true,
                 new Application(
                         applicationName, entryPointNamedFunctionName),
                 remainingTokensAfterApplicationReduction);
@@ -1442,13 +1884,17 @@ import static org.minia.pangolin.util.Util.forcedAssertion;
      * the application, expected to be found later as well, and for that
      * reason is returned; and the right side holds the reduced list of
      * tokens. */
-    public Pair<Token, List<Token>> reduceApplicationHead(
+    public Triple<Boolean, Token, List<Token>> tryReduceApplicationHead(
             final List<Token> tokens) {
 
         val tokensSize = tokens.size();
-        forcedAssertion(tokensSize > 8);
+        if (tokensSize <= 8) {
+            return new ImmutableTriple<>(false, null, null);
+        }
         val token0 = tokens.get(0);
-        forcedAssertion(token0.getType() == Token.Type.APPLICATION);
+        if (token0.getType() != Token.Type.APPLICATION) {
+            return new ImmutableTriple<>(false, null, null);
+        }
         val token1 = tokens.get(1);
         forcedAssertion(token1.getType() == Token.Type.IDENTIFIER);
         val token2 = tokens.get(2);
@@ -1468,7 +1914,7 @@ import static org.minia.pangolin.util.Util.forcedAssertion;
         for (int i = 0; i < tokensSize - 8; i++) {
             returningRight.add(tokens.get(i + 8));
         }
-        return new ImmutablePair<>(token1, returningRight);
+        return new ImmutableTriple<>(true, token1, returningRight);
     }
 
     /**  @return A {@link Pair} where the left side holds the name of

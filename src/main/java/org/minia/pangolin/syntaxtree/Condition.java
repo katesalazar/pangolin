@@ -7,7 +7,7 @@ import org.minia.pangolin.scanner.Token;
 
 import static org.minia.pangolin.util.Util.forceAssert;
 
-public class Condition {
+public abstract class Condition extends Expression {
 
     private final Expression leftHandSideExpression;
 
@@ -15,7 +15,7 @@ public class Condition {
 
     protected Condition(
             final Token leftHandSideToken, final Token rightHandSideToken) {
-        super();
+        super(null, null);
         leftHandSideExpression =
                 NaturalLiteralExpression.fromNaturalLiteralToken(
                         leftHandSideToken);
@@ -37,7 +37,14 @@ public class Condition {
                 (NaturalLiteralExpression) leftHandSideExpression
         ).getNaturalLiteralToken();
         forceAssert(Token.Type.NATURAL_LITERAL == leftHandSideToken.getType());
-        forceAssert("0".equals(leftHandSideToken.getNaturalLiteralContent()));
+        byte left;
+        if ("0".equals(leftHandSideToken.getNaturalLiteralContent())) {
+            left = 0;
+        } else {
+            forceAssert(
+                    "1".equals(leftHandSideToken.getNaturalLiteralContent()));
+            left = (byte) 1;
+        }
 
         forceAssert(NaturalLiteralExpression.class.equals(
                 rightHandSideExpression.getClass()));
@@ -45,8 +52,24 @@ public class Condition {
                 (NaturalLiteralExpression) rightHandSideExpression
         ).getNaturalLiteralToken();
         forceAssert(Token.Type.NATURAL_LITERAL == rightHandSideToken.getType());
-        forceAssert("1".equals(rightHandSideToken.getNaturalLiteralContent()));
+        byte rite;
+        if ("0".equals(rightHandSideToken.getNaturalLiteralContent())) {
+            rite = 0;
+        } else {
+            forceAssert(
+                    "1".equals(rightHandSideToken.getNaturalLiteralContent()));
+            rite = (byte) 1;
+        }
 
-        return new ImmutablePair<>(true, true);
+        if (left == rite) {
+            return new ImmutablePair<>(true, false);
+        }
+        if (left == 0) {
+            forceAssert(rite == 1);
+            return new ImmutablePair<>(true, true);
+        }
+        forceAssert(left == 1);
+        forceAssert(rite == 0);
+        return new ImmutablePair<>(true, false);
     }
 }

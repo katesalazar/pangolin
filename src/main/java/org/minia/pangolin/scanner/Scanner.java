@@ -1,7 +1,6 @@
 package org.minia.pangolin.scanner;
 
 import lombok.val;
-import lombok.var;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.minia.pangolin.Program;
@@ -12,6 +11,12 @@ import java.util.List;
 import static org.minia.pangolin.util.Util.forcedAssertion;
 
 public final class Scanner {
+
+    private static final String IDENTIFIER_ENDS = "identifier ends";
+
+    private static final String IDENT_ENDS = "ident ends";
+
+    private static final String ID_ENDS = "id ends";
 
     private final Program program;
 
@@ -57,7 +62,7 @@ public final class Scanner {
         val document = documents.get(0);
         val documentRaw = document.getRaw();
         val documentRawAsString = documentRaw.toString();
-        var remainingStuff = documentRawAsString.substring(index);
+        String remainingStuff = documentRawAsString.substring(index);
         int remainingStuffLength;
         Token returning = null;
         do {
@@ -69,22 +74,20 @@ public final class Scanner {
                     index += 1;
                 }
             } else if (expectingIdentifierEnd) {
-                if (remainingStuff.startsWith("identifier ends")) {
-                    index += "identifier ends".length();
-                    expectingIdentifierEnd = false;
-                    removeTrailingWhitespaces(currentIdentifier);
-                    returning = new Token(
-                            Token.Type.IDENTIFIER, currentIdentifier);
-                    currentIdentifier.setLength(0);
-                } else if (remainingStuff.startsWith("ident ends")) {
-                    index += "ident ends".length();
-                    expectingIdentifierEnd = false;
-                    removeTrailingWhitespaces(currentIdentifier);
-                    returning = new Token(
-                            Token.Type.IDENTIFIER, currentIdentifier);
-                    currentIdentifier.setLength(0);
-                } else if (remainingStuff.startsWith("id ends")) {
-                    index += "id ends".length();
+                if (remainingStuff.startsWith(IDENTIFIER_ENDS) ||
+                        remainingStuff.startsWith(IDENT_ENDS) ||
+                        remainingStuff.startsWith(ID_ENDS)) {
+                    final String s;
+                    if (remainingStuff.startsWith(IDENTIFIER_ENDS)) {
+                        s = IDENTIFIER_ENDS;
+                    } else if (remainingStuff.startsWith(IDENT_ENDS)) {
+                        s = IDENT_ENDS;
+                    } else {
+                        forcedAssertion(remainingStuff.startsWith(
+                                ID_ENDS));
+                        s = ID_ENDS;
+                    }
+                    index += s.length();
                     expectingIdentifierEnd = false;
                     removeTrailingWhitespaces(currentIdentifier);
                     returning = new Token(
@@ -171,6 +174,8 @@ public final class Scanner {
          * instantiation of token `the`. */
         if (stuff.startsWith(Token.LC_AT)) {
             return new ImmutablePair<>(true, Token.Type.AT);
+        } else if (stuff.startsWith(Token.LC_ARGUMENTS)) {
+            return new ImmutablePair<>(true, Token.Type.ARGUMENTS);
         } else if (stuff.startsWith(Token.LC_AND)) {
             return new ImmutablePair<>(true, Token.Type.AND);
         } else if (stuff.startsWith(Token.LC_APPLICATION)) {
@@ -187,10 +192,14 @@ public final class Scanner {
             return new ImmutablePair<>(true, Token.Type.COMMAND);
         } else if (stuff.startsWith(Token.LC_CAUSES)) {
             return new ImmutablePair<>(true, Token.Type.CAUSES);
+        } else if (stuff.startsWith(Token.LC_CALL)) {
+            return new ImmutablePair<>(true, Token.Type.CALL);
         } else if (stuff.startsWith(Token.LC_DOES)) {
             return new ImmutablePair<>(true, Token.Type.DOES);
         } else if (stuff.startsWith(Token.LC_EXECUTES)) {
             return new ImmutablePair<>(true, Token.Type.EXECUTES);
+        } else if (stuff.startsWith(Token.LC_EXECUTE)) {
+            return new ImmutablePair<>(true, Token.Type.EXECUTE);
         } else if (stuff.startsWith(Token.LC_ENTRY)) {
             return new ImmutablePair<>(true, Token.Type.ENTRY);
         } else if (stuff.startsWith(Token.LC_ENDS)) {
@@ -217,22 +226,36 @@ public final class Scanner {
             return new ImmutablePair<>(true, Token.Type.LESS);
         } else if (stuff.startsWith(Token.LC_NOTHING)) {
             return new ImmutablePair<>(true, Token.Type.NOTHING);
+        } else if (stuff.startsWith(Token.LC_NO)) {
+            return new ImmutablePair<>(true, Token.Type.NO);
         } else if (stuff.startsWith(Token.LC_NEW)) {
             return new ImmutablePair<>(true, Token.Type.NEW);
+        } else if (stuff.startsWith(Token.LC_NATURAL)) {
+            return new ImmutablePair<>(true, Token.Type.NATURAL);
+        } else if (stuff.startsWith(Token.LC_PURE)) {
+            return new ImmutablePair<>(true, Token.Type.PURE);
         } else if (stuff.startsWith(Token.LC_PRINT)) {
             return new ImmutablePair<>(true, Token.Type.PRINT);
         } else if (stuff.startsWith(Token.LC_POINT)) {
             return new ImmutablePair<>(true, Token.Type.POINT);
+        } else if (stuff.startsWith(Token.LC_PASSING)) {
+            return new ImmutablePair<>(true, Token.Type.PASSING);
         } else if (stuff.startsWith(Token.LC_RETURNS)) {
             return new ImmutablePair<>(true, Token.Type.RETURNS);
+        } else if (stuff.startsWith(Token.LC_RETURN)) {
+            return new ImmutablePair<>(true, Token.Type.RETURN);
         } else if (stuff.startsWith(Token.LC_RECEIVES)) {
             return new ImmutablePair<>(true, Token.Type.RECEIVES);
         } else if (stuff.startsWith(Token.LC_RUN)) {
             return new ImmutablePair<>(true, Token.Type.RUN);
         } else if (stuff.startsWith(Token.LC_STATEMENTS)) {
             return new ImmutablePair<>(true, Token.Type.STATEMENTS);
+        } else if (stuff.startsWith(Token.LC_STATEMENT)) {
+            return new ImmutablePair<>(true, Token.Type.STATEMENT);
         } else if (stuff.startsWith(Token.LC_SO)) {
             return new ImmutablePair<>(true, Token.Type.SO);
+        } else if (stuff.startsWith(Token.LC_SINGLE)) {
+            return new ImmutablePair<>(true, Token.Type.SINGLE);
         } else if (stuff.startsWith(Token.LC_SIDE)) {
             return new ImmutablePair<>(true, Token.Type.SIDE);
         } else if (stuff.startsWith(Token.LC_SEQUENTIALLY)) {
@@ -261,9 +284,9 @@ public final class Scanner {
     private static void removeTrailingWhitespaces(
             final StringBuilder sb) {
 
-        var sbCurrentLength = sb.length();
-        var indexOfLastCharOfSb = sbCurrentLength - 1;
-        var trailingChar = sb.charAt(indexOfLastCharOfSb);
+        int sbCurrentLength = sb.length();
+        int indexOfLastCharOfSb = sbCurrentLength - 1;
+        char trailingChar = sb.charAt(indexOfLastCharOfSb);
         while (trailingChar == ' ' || trailingChar == '\t') {
             sb.deleteCharAt(indexOfLastCharOfSb);
             sbCurrentLength = sb.length();

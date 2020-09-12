@@ -2,18 +2,18 @@ package org.minia.pangolin.runtimegraph;
 
 import org.minia.pangolin.semantics.UnboundIdentifierException;
 
-public class PrintOperationFactory {
+public class PrintStatementFactory {
 
-    PrintOperationFactory() {
+    PrintStatementFactory() {
         super();
     }
 
-    public PrintOperation from(
-            final org.minia.pangolin.syntaxtree.PrintOperation printOperation,
+    public PrintStatement from(
+            final org.minia.pangolin.syntaxtree.PrintStatement printStatement,
             final org.minia.pangolin.syntaxtree.WhereValueBindings whereValueBindings)
                     throws UnboundIdentifierException {
 
-        return new PrintOperation(
-                printOperation.getToken(), whereValueBindings);
+        return new PrintStatement(
+                printStatement.getToken(), whereValueBindings);
     }
 }

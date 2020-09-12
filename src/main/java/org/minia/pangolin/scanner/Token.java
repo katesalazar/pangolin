@@ -1,11 +1,14 @@
 package org.minia.pangolin.scanner;
 
 import lombok.Getter;
-import lombok.ToString;
 
+import static org.minia.pangolin.util.Util.forceAssert;
 import static org.minia.pangolin.util.Util.forcedAssertion;
 
-@ToString public final class Token {
+public final class Token {
+
+    static final String INVALID_CONSTRUCTOR_USAGE =
+            "Invalid constructor usage";
 
     /**  Lower case `a` word, as a {@link String}. */
     static final String LC_A = "a";
@@ -19,11 +22,17 @@ import static org.minia.pangolin.util.Util.forcedAssertion;
     /**  Lower case `application` word, as a {@link String}. */
     static final String LC_APPLICATION = "application";
 
+    /**  Lower case `arguments` word, as a {@link String}. */
+    static final String LC_ARGUMENTS = "arguments";
+
     /**  Lower case `at` word, as a {@link String}. */
     static final String LC_AT = "at";
 
     /**  Lower case `bound` word, as a {@link String}. */
     static final String LC_BOUND = "bound";
+
+    /**  Lower case `call` word, as a {@link String}. */
+    static final String LC_CALL = "call";
 
     /**  Lower case `causes` word, as a {@link String}. */
     static final String LC_CAUSES = "causes";
@@ -52,6 +61,9 @@ import static org.minia.pangolin.util.Util.forcedAssertion;
     /**  Lower case `entry` word, as a {@link String}. */
     static final String LC_ENTRY = "entry";
 
+    /**  Lower case `execute` word, as a {@link String}. */
+    static final String LC_EXECUTE = "execute";
+
     /**  Lower case `executes` word, as a {@link String}. */
     static final String LC_EXECUTES = "executes";
 
@@ -76,20 +88,35 @@ import static org.minia.pangolin.util.Util.forcedAssertion;
     /**  Lower case `line` word, as a {@link String}. */
     static final String LC_LINE = "line";
 
+    /**  Lower case `natural` word, as a {@link String}. */
+    static final String LC_NATURAL = "natural";
+
     /**  Lower case `new` word, as a {@link String}. */
     static final String LC_NEW = "new";
+
+    /**  Lower case `no` word, as a {@link String}. */
+    static final String LC_NO = "no";
 
     /**  Lower case `nothing` word, as a {@link String}. */
     static final String LC_NOTHING = "nothing";
 
-    /**  Lower case `print` word, as a {@link String}. */
-    static final String LC_PRINT = "print";
+    /**  Lower case `passing` word, as a {@link String}. */
+    static final String LC_PASSING = "passing";
 
     /**  Lower case `point` word, as a {@link String}. */
     static final String LC_POINT = "point";
 
+    /**  Lower case `print` word, as a {@link String}. */
+    static final String LC_PRINT = "print";
+
+    /**  Lower case `pure` word, as a {@link String}. */
+    static final String LC_PURE = "pure";
+
     /**  Lower case `receives` word, as a {@link String}. */
     static final String LC_RECEIVES = "receives";
+
+    /**  Lower case `return` word, as a {@link String}. */
+    static final String LC_RETURN = "return";
 
     /**  Lower case `returns` word, as a {@link String}. */
     static final String LC_RETURNS = "returns";
@@ -103,8 +130,14 @@ import static org.minia.pangolin.util.Util.forcedAssertion;
     /**  Lower case `side` word, as a {@link String}. */
     static final String LC_SIDE = "side";
 
+    /**  Lower case `single` word, as a {@link String}. */
+    static final String LC_SINGLE = "single";
+
     /**  Lower case `so` word, as a {@link String}. */
     static final String LC_SO = "so";
+
+    /**  Lower case `statement` word, as a {@link String}. */
+    static final String LC_STATEMENT = "statement";
 
     /**  Lower case `statements` word, as a {@link String}. */
     static final String LC_STATEMENTS = "statements";
@@ -125,11 +158,12 @@ import static org.minia.pangolin.util.Util.forcedAssertion;
     static final String LC_WHERE = "where";
 
     public enum Type {
-        A, ALL, AND, APPLICATION, AT, BOUND, CAUSES, COMMAND, CONDITIONAL, DOES,
-        EFFECTS, ELSE, END, ENDS, ENTRY, EXECUTES, FUNCTION, IDENTIFIER, IF,
-        INTERFACE, IS, IT, LESS, LINE, NATURAL_LITERAL, NEW, NOTHING, POINT,
-        PRINT, RECEIVES, RETURNS, RUN, SEQUENTIALLY, SIDE, SO, STATEMENTS,
-        STRING_LITERAL, THAN, THE, THEN, TO, WHERE
+        A, ALL, AND, APPLICATION, ARGUMENTS, AT, BOUND, CALL, CAUSES, COMMAND,
+        CONCURRENTLY, CONDITIONAL, DOES, EFFECTS, ELSE, END, ENDS, ENTRY,
+        EXECUTE, EXECUTES, FUNCTION, IDENTIFIER, IF, INTERFACE, IS, IT, LESS,
+        LINE, NATURAL, NATURAL_LITERAL, NEW, NO, NOTHING, PASSING, POINT, PRINT,
+        PURE, RECEIVES, RETURN, RETURNS, RUN, SEQUENTIALLY, SIDE, SINGLE, SO,
+        STATEMENT, STATEMENTS, STRING_LITERAL, THAN, THE, THEN, TO, WHERE
     }
 
     @Getter private final Type type;
@@ -153,6 +187,15 @@ import static org.minia.pangolin.util.Util.forcedAssertion;
     /**  General {@link Token} constructor. */
     public Token(final Type type) {
         this.type = type;
+        if (type == Type.IDENTIFIER) {
+            throw new IllegalArgumentException(INVALID_CONSTRUCTOR_USAGE);
+        }
+        if (type == Type.STRING_LITERAL) {
+            throw new IllegalArgumentException(INVALID_CONSTRUCTOR_USAGE);
+        }
+        if (type == Type.NATURAL_LITERAL) {
+            throw new IllegalArgumentException(INVALID_CONSTRUCTOR_USAGE);
+        }
         identifierName = null;
         stringLiteralContent = null;
         naturalLiteralContent = null;
@@ -190,6 +233,13 @@ import static org.minia.pangolin.util.Util.forcedAssertion;
         }
     }
 
+    public Token(final Token token) {
+        type = token.type;
+        identifierName = token.identifierName;
+        stringLiteralContent = token.stringLiteralContent;
+        naturalLiteralContent = token.naturalLiteralContent;
+    }
+
     public boolean notAnIdentifier() {
         return type != Type.IDENTIFIER;
     }
@@ -204,10 +254,14 @@ import static org.minia.pangolin.util.Util.forcedAssertion;
                 return LC_AND;
             case APPLICATION:
                 return LC_APPLICATION;
+            case ARGUMENTS:
+                return LC_ARGUMENTS;
             case AT:
                 return LC_AT;
             case BOUND:
                 return LC_BOUND;
+            case CALL:
+                return LC_CALL;
             case CAUSES:
                 return LC_CAUSES;
             case COMMAND:
@@ -226,10 +280,14 @@ import static org.minia.pangolin.util.Util.forcedAssertion;
                 return LC_ENDS;
             case ENTRY:
                 return LC_ENTRY;
+            case EXECUTE:
+                return LC_EXECUTE;
             case EXECUTES:
                 return LC_EXECUTES;
             case FUNCTION:
                 return LC_FUNCTION;
+            case IDENTIFIER:
+                return token.identifierName.toString();
             case IF:
                 return LC_IF;
             case INTERFACE:
@@ -242,18 +300,28 @@ import static org.minia.pangolin.util.Util.forcedAssertion;
                 return LC_LESS;
             case LINE:
                 return LC_LINE;
+            case NATURAL:
+                return LC_NATURAL;
             case NATURAL_LITERAL:
                 return token.naturalLiteralContent.toString();
             case NEW:
                 return LC_NEW;
+            case NO:
+                return LC_NO;
             case NOTHING:
                 return LC_NOTHING;
+            case PASSING:
+                return LC_PASSING;
             case POINT:
                 return LC_POINT;
             case PRINT:
                 return LC_PRINT;
+            case PURE:
+                return LC_PURE;
             case RECEIVES:
                 return LC_RECEIVES;
+            case RETURN:
+                return LC_RETURN;
             case RETURNS:
                 return LC_RETURNS;
             case RUN:
@@ -262,8 +330,12 @@ import static org.minia.pangolin.util.Util.forcedAssertion;
                 return LC_SEQUENTIALLY;
             case SIDE:
                 return LC_SIDE;
+            case SINGLE:
+                return LC_SINGLE;
             case SO:
                 return LC_SO;
+            case STATEMENT:
+                return LC_STATEMENT;
             case STATEMENTS:
                 return LC_STATEMENTS;
             case THAN:
@@ -277,7 +349,23 @@ import static org.minia.pangolin.util.Util.forcedAssertion;
             case WHERE:
                 return LC_WHERE;
             default:
-                throw new IllegalArgumentException("FIXME");
+                throw new IllegalArgumentException(
+                        "Unknown string for `" + token.type + '`');
+        }
+    }
+
+    public String toString() {
+        try {
+            return stringFor(this);
+        } catch (final IllegalArgumentException iae) {
+            if (type == Token.Type.IDENTIFIER) {
+                return "" + identifierName;
+            } else if (type == Token.Type.STRING_LITERAL) {
+                return "" + stringLiteralContent;
+            } else {
+                forceAssert(type == Token.Type.NATURAL_LITERAL);
+                return "" + naturalLiteralContent;
+            }
         }
     }
 }
