@@ -96,4 +96,11 @@ public class AppTest extends TestCase {
                 app.runApp("src/main/resources/conditional_expression/");
         assertEquals(true, runAppResult);
     }
+
+    public void test10() throws LanguageNotRecognizedException {
+        val app = new App();
+        val runAppResult =
+                app.runApp("src/main/resources/two_functions/");
+        assertEquals(true, runAppResult);
+    }
 }
