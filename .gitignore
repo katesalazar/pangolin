@@ -4,3 +4,6 @@
 
 #   Ignore Java and Maven stuff.
 target/
+
+#   Java Decompiler (`github.com/java-decompiler/jd-gui/`).
+jd-gui.cfg
