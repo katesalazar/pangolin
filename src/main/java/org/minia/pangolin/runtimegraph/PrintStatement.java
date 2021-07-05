@@ -128,13 +128,18 @@ public class PrintStatement extends Statement {
             } else {
                 throw new NotImplementedException(BRANCH_NOT_IMPLEMENTED_YET);
             }
-        } else if (org.minia.pangolin.syntaxtree.FunctionCallExpression.class.equals(
+        } else if (org.minia.pangolin.syntaxtree.NamedFunctionCallExpression.class.equals(
                 expression.getClass())) {
             throw new NotImplementedException(BRANCH_NOT_IMPLEMENTED_YET);
         } else {
             throw new NotImplementedException(BRANCH_NOT_IMPLEMENTED_YET);
         }
         return charSequence;
+    }
+
+    public void compute() {
+        throw new IllegalStateException(
+                "can not compute a print statement, only run it");
     }
 
     @SuppressWarnings({"java:S106"})  // "use a logger"

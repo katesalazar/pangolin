@@ -18,7 +18,7 @@ import org.minia.pangolin.syntaxtree.Expression;
 import org.minia.pangolin.syntaxtree.ExpressionType;
 import org.minia.pangolin.syntaxtree.ExpressionTypeFactory;
 import org.minia.pangolin.syntaxtree.ExecuteStatement;
-import org.minia.pangolin.syntaxtree.FunctionCallExpression;
+import org.minia.pangolin.syntaxtree.NamedFunctionCallExpression;
 import org.minia.pangolin.syntaxtree.IdentifierExpression;
 import org.minia.pangolin.syntaxtree.LessThanCondition;
 import org.minia.pangolin.syntaxtree.NamedFunction;
@@ -1784,7 +1784,7 @@ import static org.minia.pangolin.util.Util.forcedAssertion;
 
     @SuppressWarnings({"java:S1452"})  // Remove generic wildcard type.
     public
-    Triple<Boolean, FunctionCallExpression, ? extends List<Token>>
+    Triple<Boolean, NamedFunctionCallExpression, ? extends List<Token>>
     tryReduceFunctionCall(final List<Token> tokens) {
         val tokensSize = tokens.size();
         /*   `call function ID passing no arguments at all` has a min
@@ -1813,7 +1813,8 @@ import static org.minia.pangolin.util.Util.forcedAssertion;
         }
         return new ImmutableTriple<>(
                 true,
-                FunctionCallExpression.fromThinAir(),
+                NamedFunctionCallExpression.fromNamedFunctionIdentifier(
+                        token2),
                 remainingTokens);
     }
 

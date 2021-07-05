@@ -64,6 +64,15 @@ public class Statements {
         }
     }
 
+    public void compute() {
+        if (RunTimeInterleave.ANY == runTimeInterleave) {
+            forceAssert(statements.size() == 1);
+            statements.get(0).compute();
+        } else {
+            throw new IllegalStateException("can not compute");
+        }
+    }
+
     public void run() {
         if (RunTimeInterleave.ANY == runTimeInterleave) {
             forceAssert(statements.size() == 1);

@@ -3,6 +3,7 @@ package org.minia.pangolin.syntaxtree;
 import junit.framework.Test;
 import junit.framework.TestCase;
 import junit.framework.TestSuite;
+import org.minia.pangolin.scanner.Token;
 
 /**
  * Unit test.
@@ -29,7 +30,8 @@ public class FunctionCallExpressionTest extends TestCase {
     public void test0() {
         boolean excepted = false;
         try {
-            new FunctionCallExpression();
+            new NamedFunctionCallExpression(new NamedFunctionCall(new Token(
+                    Token.Type.IDENTIFIER, "foo")));
         } catch (final UnsupportedOperationException ignore) {
             excepted = true;
         }

@@ -29,7 +29,10 @@ public class StatementFactory {
         }
         if (org.minia.pangolin.syntaxtree.ExecuteStatement.class.equals(
                 statement.getClass())){
-            throw new NotImplementedException("FIXME");
+            val executeStatement =
+                    (org.minia.pangolin.syntaxtree.ExecuteStatement)
+                    statement;
+            return new ExecuteStatement(executeStatement);
         }
         throw new NotImplementedException("FIXME");
     }

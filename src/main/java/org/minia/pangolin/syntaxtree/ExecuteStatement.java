@@ -6,11 +6,11 @@ public class ExecuteStatement implements Statement {
 
     /**  <p>What to execute. */
     @Getter
-    private final FunctionCallExpression functionCallExpression;
+    private final NamedFunctionCallExpression namedFunctionCallExpression;
 
     public ExecuteStatement(
-            final FunctionCallExpression functionCallExpression) {
+            final NamedFunctionCallExpression namedFunctionCallExpression) {
 
-        this.functionCallExpression = functionCallExpression;
+        this.namedFunctionCallExpression = namedFunctionCallExpression;
     }
 }

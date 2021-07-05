@@ -24,6 +24,10 @@ public class NamedFunction {
                 namedFunction.getWhereValueBindings());
     }
 
+    public void compute() {
+        statements.compute();
+    }
+
     public void run() {
         statements.run();
     }

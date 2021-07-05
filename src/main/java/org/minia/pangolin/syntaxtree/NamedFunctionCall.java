@@ -1,12 +1,14 @@
 package org.minia.pangolin.syntaxtree;
 
+import org.minia.pangolin.scanner.Token;
+
 public class NamedFunctionCall {
 
-    private final NamedFunction namedFunction;
+    private final Token namedFunctionIdentifier;
 
-    NamedFunctionCall(final NamedFunction namedFunction) {
+    NamedFunctionCall(final Token namedFunctionIdentifier) {
         super();
-        this.namedFunction = namedFunction;
+        this.namedFunctionIdentifier = namedFunctionIdentifier;
     }
 
     public ExpressionType type() {
