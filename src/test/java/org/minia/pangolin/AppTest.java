@@ -53,20 +53,20 @@ public class AppTest extends TestCase {
         val app = new App();
         val runAppResult =
                 app.runApp("src/main/resources/single_where_clause/");
-        assertEquals(true, runAppResult);
+        assertTrue(runAppResult);
     }
 
     public void test4() throws LanguageNotRecognizedException {
         val app = new App();
         val runAppResult =
                 app.runApp("src/main/resources/double_where_clause/");
-        assertEquals(true, runAppResult);
+        assertTrue(runAppResult);
     }
 
     public void test5() throws LanguageNotRecognizedException {
         val app = new App();
         val runAppResult = app.runApp("examples/0_hello_world");
-        assertEquals(true, runAppResult);
+        assertTrue(runAppResult);
     }
 
     public void test6() {
@@ -81,51 +81,41 @@ public class AppTest extends TestCase {
         val app = new App();
         val runAppResult =
                 app.runApp("src/main/resources/single_where_clause_and_run/");
-        assertEquals(true, runAppResult);
+        assertTrue(runAppResult);
     }
 
     public void test8() throws LanguageNotRecognizedException {
         val app = new App();
         val runAppResult =
                 app.runApp("src/main/resources/double_where_clause_and_run/");
-        assertEquals(true, runAppResult);
+        assertTrue(runAppResult);
     }
 
     public void test9() throws LanguageNotRecognizedException {
         val app = new App();
         val runAppResult =
                 app.runApp("src/main/resources/conditional_expression/");
-        assertEquals(true, runAppResult);
+        assertTrue(runAppResult);
     }
 
     public void test10() throws LanguageNotRecognizedException {
         val app = new App();
         val runAppResult =
                 app.runApp("src/main/resources/two_functions/");
-        assertEquals(true, runAppResult);
+        assertTrue(runAppResult);
     }
 
-    /** TODO */
     public void test11() throws LanguageNotRecognizedException {
         val app = new App();
-        boolean excepted = false;
-        try {
-            app.runApp("src/main/resources/function_call_zero/");
-        } catch (final NotImplementedException ignore) {
-            excepted = true;
-        }
-        assertTrue(excepted);
+        val runAppResult =
+                app.runApp("src/main/resources/function_call_zero/");
+        assertTrue(runAppResult);
     }
 
-    /** TODO */
     public void test12() throws LanguageNotRecognizedException {
         val app = new App();
-        boolean excepted = false;
-        try {
-            app.runApp("src/main/resources/function_call_one/");
-        } catch (final NotImplementedException ignore) {
-            excepted = true;
-        }
-        assertTrue(excepted);
+        val runAppResult =
+                app.runApp("src/main/resources/function_call_one/");
+        assertTrue(runAppResult);
     }
 }
