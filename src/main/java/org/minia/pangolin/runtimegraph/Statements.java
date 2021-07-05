@@ -56,10 +56,15 @@ public class Statements {
             if (org.minia.pangolin.syntaxtree.Statements.RunTimeInterleave.PARALLEL ==
                     statementsRunTimeInterleave) {
                 runTimeInterleave = RunTimeInterleave.PARALLEL;
-            } else {
-                forceAssert(org.minia.pangolin.syntaxtree.Statements.RunTimeInterleave.SEQUENTIAL ==
-                        statementsRunTimeInterleave);
+            } else if (org.minia.pangolin.syntaxtree.Statements.RunTimeInterleave.SEQUENTIAL ==
+                    statementsRunTimeInterleave) {
                 runTimeInterleave = RunTimeInterleave.SEQUENTIAL;
+            } else {
+                forceAssert(org.minia.pangolin.syntaxtree.Statements.RunTimeInterleave.ANY ==
+                        statementsRunTimeInterleave);
+                val statementsSize = statements.size();
+                forceAssert(statementsSize == 1);
+                runTimeInterleave = RunTimeInterleave.ANY;
             }
         }
     }
