@@ -27,6 +27,10 @@ public class StatementFactory {
                 statement.getClass())) {
             return new NewLineStatementFactory().build();
         }
+        if (org.minia.pangolin.syntaxtree.ExecuteStatement.class.equals(
+                statement.getClass())){
+            throw new NotImplementedException("FIXME");
+        }
         throw new NotImplementedException("FIXME");
     }
 }

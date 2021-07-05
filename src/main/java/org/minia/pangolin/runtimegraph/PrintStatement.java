@@ -128,6 +128,9 @@ public class PrintStatement extends Statement {
             } else {
                 throw new NotImplementedException(BRANCH_NOT_IMPLEMENTED_YET);
             }
+        } else if (org.minia.pangolin.syntaxtree.FunctionCallExpression.class.equals(
+                expression.getClass())) {
+            throw new NotImplementedException(BRANCH_NOT_IMPLEMENTED_YET);
         } else {
             throw new NotImplementedException(BRANCH_NOT_IMPLEMENTED_YET);
         }
