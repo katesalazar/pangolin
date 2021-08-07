@@ -47,4 +47,15 @@ public class WhereValueBindings {
         }
         throw new IllegalStateException("FIXME");
     }
+
+    /**  Is there any identifier bound to some expression? */
+    public boolean identifierBoundToExpression(final Expression expression) {
+        for (final WhereValueBinding whereValueBinding :
+                whereValueBindingsList) {
+            if (whereValueBinding.expression.equals(expression)) {
+                return true;
+            }
+        }
+        return false;
+    }
 }

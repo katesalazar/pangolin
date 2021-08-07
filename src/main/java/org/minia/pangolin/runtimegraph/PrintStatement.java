@@ -2,10 +2,16 @@ package org.minia.pangolin.runtimegraph;
 
 import lombok.val;
 import org.apache.commons.lang3.NotImplementedException;
+import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.apache.commons.lang3.tuple.Pair;
+import org.minia.pangolin.scanner.Token;
 import org.minia.pangolin.semantics.UnboundIdentifierException;
+import org.minia.pangolin.syntaxtree.NamedFunctionCallExpression;
 import org.minia.pangolin.syntaxtree.NaturalLiteralExpression;
+import org.minia.pangolin.syntaxtree.WhereValueBinding;
 
 import static org.minia.pangolin.util.Util.forceAssert;
+import static org.minia.pangolin.util.Util.forcedAssertion;
 
 public class PrintStatement extends Statement {
 
@@ -35,7 +41,9 @@ public class PrintStatement extends Statement {
                                 "wrong");
             }
             if (whereValueBindings.bound(token.getIdentifierName())) {
-                charSequence = tryToResolve(token, whereValueBindings);
+                val trial = tryToResolve(token, whereValueBindings);
+                forcedAssertion(trial.getLeft());
+                charSequence = trial.getRight();
             } else {
                 throw new UnboundIdentifierException("" +
                         "Unbound identifier '" + token.getIdentifierName() +
@@ -51,7 +59,7 @@ public class PrintStatement extends Statement {
         }
     }
 
-    private static CharSequence tryToResolve(
+    private static Pair<Boolean, CharSequence> tryToResolve(
             final org.minia.pangolin.scanner.Token token,
             final org.minia.pangolin.syntaxtree.WhereValueBindings whereValueBindings)
     {
@@ -130,11 +138,39 @@ public class PrintStatement extends Statement {
             }
         } else if (org.minia.pangolin.syntaxtree.NamedFunctionCallExpression.class.equals(
                 expression.getClass())) {
-            throw new NotImplementedException(BRANCH_NOT_IMPLEMENTED_YET);
+            if (whereValueBindings.identifierBoundToExpression(expression)) {
+                for (final WhereValueBinding whereValueBinding :
+                        whereValueBindings.getWhereValueBindingsList()) {
+                    val trial = tryToResolve(token, whereValueBinding);
+                    val isResolved = trial.getLeft();
+                    if (isResolved) {
+                        return new ImmutablePair<>(true, trial.getRight());
+                    }
+                }
+                return new ImmutablePair<>(false, null);
+            } else {
+                return new ImmutablePair<>(false, null);
+            }
         } else {
             throw new NotImplementedException(BRANCH_NOT_IMPLEMENTED_YET);
         }
-        return charSequence;
+        return new ImmutablePair<>(true, charSequence);
+    }
+
+    private static Pair<Boolean, CharSequence> tryToResolve(
+            final org.minia.pangolin.scanner.Token token,
+            final org.minia.pangolin.syntaxtree.WhereValueBinding whereValueBinding)
+    {
+        forceAssert(token.getType() == Token.Type.IDENTIFIER);
+        val identifierName = token.getIdentifierName();
+        if (whereValueBinding.bound(identifierName)) {
+            val expression = whereValueBinding.expressionFor(identifierName);
+            val expressionClass = expression.getClass();
+            forcedAssertion(
+                    NamedFunctionCallExpression.class.equals(expressionClass));
+            return new ImmutablePair<>(false, null);
+        }
+        return new ImmutablePair<>(false, null);
     }
 
     public void compute() {
