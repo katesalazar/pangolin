@@ -42,8 +42,12 @@ public class PrintStatement extends Statement {
             }
             if (whereValueBindings.bound(token.getIdentifierName())) {
                 val trial = tryToResolve(token, whereValueBindings);
-                forcedAssertion(trial.getLeft());
-                charSequence = trial.getRight();
+                val isResolved = trial.getLeft();
+                if (isResolved) {
+                    charSequence = trial.getRight();
+                } else {
+                    charSequence = null;
+                }
             } else {
                 throw new UnboundIdentifierException("" +
                         "Unbound identifier '" + token.getIdentifierName() +
